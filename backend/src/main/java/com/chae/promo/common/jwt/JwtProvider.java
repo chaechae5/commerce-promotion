@@ -16,7 +16,7 @@ import java.util.Date;
  * 토큰 생성, 서명, 파싱, 검증만 담당
  */
 @Component
-public class JwtUtil {
+public class JwtProvider {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
@@ -83,11 +83,17 @@ public class JwtUtil {
         }
 
         try {
-            return Jwts.parserBuilder()
+            Claims claims = Jwts.parserBuilder()
                     .setSigningKey(secretKey)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
+
+            if (!"anonymous".equals(claims.getSubject())) {
+                throw new CommonCustomException(CommonErrorCode.JWT_INVALID);
+            }
+
+            return claims;
         } catch (ExpiredJwtException e) {
             throw new CommonCustomException(CommonErrorCode.JWT_EXPIRED);
         } catch (JwtException e) {
