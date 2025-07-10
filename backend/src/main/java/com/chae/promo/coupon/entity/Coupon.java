@@ -27,6 +27,10 @@ public class Coupon extends BaseTime {
 
     private LocalDateTime endDate;
 
+    private LocalDateTime expireDate;
+
+    private Integer validDays;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
