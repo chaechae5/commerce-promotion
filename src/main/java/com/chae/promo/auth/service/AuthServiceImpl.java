@@ -32,23 +32,17 @@ public class AuthServiceImpl implements AuthService{
 
         Claims claims = jwtUtil.validateToken(cleanToken);
 
-        // Claims에서 얻은 String subject를 TokenType enum으로 변환
-        String subject = claims.getSubject();
-        TokenType tokenType = TokenType.fromValue(subject);
+        String principalId = extractPrincipalId(claims, CommonErrorCode.JWT_INVALID);
+        AuthProviderType authProviderType = getAuthProviderTypeFromClaims(claims);
 
-        //tokenType 따른 분기 - 확장을 염두에 두고 switch문 사용
-        switch (tokenType) {
-            case ANONYMOUS -> {
-                String annoId = claims.get("anonId", String.class);
-                return buildTokenResponse(TokenType.ANONYMOUS, annoId);
-            }
-            // 향후 다른 토큰 타입 추가 가능
+        //authProviderType 따른 분기 - 확장을 염두에 두고 switch문 사용
+        return switch (authProviderType) {
+            case ANONYMOUS -> buildTokenResponse(authProviderType, principalId);
             default -> {
-                //예상치 못한 tokenType일 경우 예외
-                log.error("TokenType.fromValue에서 처리되지 않은 예상치 못한 토큰 타입이 switch문에 도달: {}", tokenType);
+                log.error("지원하지 않는 AuthProviderType: {}", authProviderType);
                 throw new CommonCustomException(CommonErrorCode.INTERNAL_SERVER_ERROR);
             }
-        }
+        };
     }
 
     /**
@@ -62,9 +56,9 @@ public class AuthServiceImpl implements AuthService{
         return token.startsWith("Bearer ") ? token.substring(7) : token;
     }
 
-    private TokenValidationResponse buildTokenResponse(TokenType tokenType, String principalId) {
+    private TokenValidationResponse buildTokenResponse(AuthProviderType authProviderType, String principalId) {
         return TokenValidationResponse.builder()
-                .tokenType(tokenType)
+                .authProviderType(authProviderType)
                 .principalId(principalId)
                 .build();
     }
