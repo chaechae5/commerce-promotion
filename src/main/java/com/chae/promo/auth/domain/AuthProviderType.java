@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum TokenType {
+public enum AuthProviderType {
 
     ANONYMOUS("anonymous");
 
@@ -16,16 +16,16 @@ public enum TokenType {
     /**
      * 문자열 값을 통해 TokenType Enum을 찾아 반환
      *
-     * @param value JWT Claims의 subject 값 (예: "anonymous", "user")
+     * @param value JWT Claims의 subject 값 (예: "anonymous", "refresh_token")
      * @return 해당 문자열 값에 대응하는 enum
      * @throws IllegalArgumentException 유효하지 않은 subject 값일 경우
      */
-    public static TokenType fromValue(String value) {
+    public static AuthProviderType fromValue(String value) {
         if (value == null) {
             throw new IllegalArgumentException("");
         }
 
-        for (TokenType type : TokenType.values()) {
+        for (AuthProviderType type : AuthProviderType.values()) {
             if (type.getValue().equals(value)) {
                 return type;
             }
