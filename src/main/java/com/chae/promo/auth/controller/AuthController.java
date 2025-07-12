@@ -1,5 +1,6 @@
 package com.chae.promo.auth.controller;
 
+import com.chae.promo.auth.dto.TokenValidationResponse;
 import com.chae.promo.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,18 +15,18 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/anonymous/token")
+    @PostMapping("/token/new/anonymous")
     @Operation(summary = "비회원 토큰 발급", description = "인증없이 토큰 발급")
     public String issueAnonymousToken() {
         return authService.createAnonymousToken();
     }
 
-    @GetMapping("/anonymous/token/verify")
-    @Operation(summary = "비회원 토큰 검증", description = "토큰 검증")
-    public String verifyAnonymousToken(
+    @GetMapping("/token/verify")
+    @Operation(summary = "토큰 검증", description = "토큰 검증 공통 API")
+    public TokenValidationResponse verifyToken(
             @RequestHeader("Authorization") String token
     ) {
-        return authService.getAnonIdFromToken(token);
+        return authService.validateAndExtractToken(token);
     }
 
 }
