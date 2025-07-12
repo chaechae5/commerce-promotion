@@ -10,8 +10,10 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.UUID;
 
+/**
+ * 토큰 생성, 서명, 파싱, 검증만 담당
+ */
 @Component
 public class JwtUtil {
     @Value("${jwt.secret}")
@@ -26,8 +28,13 @@ public class JwtUtil {
     private void init() {
         this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
-    public String generateAnonymousToken() {
-        String anonId = UUID.randomUUID().toString();
+
+    /**
+     * 익명 토큰 생성
+     * @param anonId 익명 사용자 id
+     * @return JWT 토큰
+     */
+    public String generateAnonymousToken(String anonId) {
         long now = System.currentTimeMillis();
         Date expiry = new Date(now + jwtExpirationMs);
 
@@ -40,11 +47,11 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String validateAndGetAnonId(String token) {
-        var claims = validateToken(token);
-        return claims.get("anonId", String.class);
-    }
-
+    /**
+     * 토큰 검증하고 Claims 객체 반환 공통 메서드
+     * @param token
+     * @return Claims
+     */
     public Claims validateToken(String token) {
         try {
             return Jwts.parserBuilder()
