@@ -1,5 +1,6 @@
 package com.chae.promo.common.jwt;
 
+import com.chae.promo.auth.domain.AuthProviderType;
 import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
 import io.jsonwebtoken.*;
@@ -19,8 +20,11 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration}")
-    private long jwtExpirationMs;
+    @Value("${jwt.accessTokenExpiration}") //초 단위
+    private long jwtAccessTokenExpiration;
+
+    @Value("${jwt.refreshTokenExpiration}")//초 단위
+    private long jwtRefreshTokenExpiration;
 
     private SecretKey secretKey;
 
@@ -30,21 +34,42 @@ public class JwtUtil {
     }
 
     /**
-     * 익명 토큰 생성
-     * @param anonId 익명 사용자 id
-     * @return JWT 토큰
+     * AccessToken 생성
+     * @param principalId 토큰 생성할 principalId
+     * @param authProviderType 어떤 로그인방식의 토큰인지
+     * @return accessToken
      */
-    public String generateAnonymousToken(String anonId) {
-        long now = System.currentTimeMillis();
-        Date expiry = new Date(now + jwtExpirationMs);
+    public String generateAccessToken(String principalId, AuthProviderType authProviderType) {
+        return createToken(principalId, authProviderType, jwtAccessTokenExpiration, "access");
+    }
 
+    /**
+     * RefreshToken 생성
+     * @param principalId 토큰 생성할 principalId
+     * @return refreshToken
+     */
+    public String generateRefreshToken(String principalId, AuthProviderType authProviderType) {
+        return createToken(principalId, authProviderType, jwtRefreshTokenExpiration, "refresh");
+    }
+
+    //토큰생성 로직
+    private String createToken(String principalId, AuthProviderType authProviderType, long expirySeconds, String tokenType) {
         return Jwts.builder()
-                .setSubject("anonymous")
-                .claim("anonId", anonId)
-                .setIssuedAt(new Date(now))
-                .setExpiration(expiry)
+                .setSubject(authProviderType.getValue())
+                .claim("principalId", principalId)
+                .claim("tokenType", tokenType)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expirySeconds * 1000L))
                 .signWith(secretKey, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    /**
+     * accessToken의 만료 초 반환
+     * @return 만료 초
+     */
+    public long getJwtAccessTokenExpiration(){
+        return jwtAccessTokenExpiration;
     }
 
     /**
@@ -53,6 +78,10 @@ public class JwtUtil {
      * @return Claims
      */
     public Claims validateToken(String token) {
+        if (token == null || token.isBlank()) {
+            throw new CommonCustomException(CommonErrorCode.JWT_INVALID);
+        }
+
         try {
             return Jwts.parserBuilder()
                     .setSigningKey(secretKey)

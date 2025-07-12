@@ -1,6 +1,7 @@
 package com.chae.promo.auth.service;
 
-import com.chae.promo.auth.domain.TokenType;
+import com.chae.promo.auth.domain.AuthProviderType;
+import com.chae.promo.auth.dto.TokenResponse;
 import com.chae.promo.auth.dto.TokenValidationResponse;
 import com.chae.promo.common.jwt.JwtUtil;
 import com.chae.promo.exception.CommonCustomException;
@@ -15,21 +16,27 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuthServiceImpl implements AuthService{
+public class AuthServiceImpl implements AuthService {
 
     private final JwtUtil jwtUtil;
 
     @Override
-    public String createAnonymousToken() {
+    public TokenResponse issueAnonymousTokens() {
         String anonId = UUID.randomUUID().toString();
-        return jwtUtil.generateAnonymousToken(anonId);
+        String accessToken = jwtUtil.generateAccessToken(anonId, AuthProviderType.ANONYMOUS);
+        String refreshToken = jwtUtil.generateRefreshToken(anonId, AuthProviderType.ANONYMOUS); // 추후 랜덤문자열 기반으로 변경 예정
+
+        return TokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(jwtUtil.getJwtAccessTokenExpiration())
+                .build();
     }
 
     @Override
     public TokenValidationResponse validateAndExtractToken(String token) {
-        //접두사 있으면 제거
         String cleanToken = extractTokenFromBearer(token);
-
         Claims claims = jwtUtil.validateToken(cleanToken);
 
         String principalId = extractPrincipalId(claims, CommonErrorCode.JWT_INVALID);
