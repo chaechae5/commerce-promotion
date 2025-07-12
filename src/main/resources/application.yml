@@ -4,4 +4,5 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:default-secret-key-c3VwZ5Rm9ySFM1Mj=}
-  expiration: ${JWT_EXPIRATION:3600000}
+  accessTokenExpiration: 3600 # 1시간 (초)
+  refreshTokenExpiration: 604800 # 7일 (초)
