@@ -1,7 +1,9 @@
 package com.chae.promo.auth.service;
 
+import com.chae.promo.auth.dto.TokenValidationResponse;
+
 public interface AuthService {
 
     String createAnonymousToken();
-    String getAnonIdFromToken(String token);
+    TokenValidationResponse validateAndExtractToken(String token);
 }
