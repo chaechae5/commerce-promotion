@@ -6,7 +6,8 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum CommonErrorCode {
     JWT_EXPIRED(HttpStatus.FORBIDDEN, "JWT_EXPIRED", "토큰이 만료되었습니다."),
-    JWT_INVALID(HttpStatus.UNAUTHORIZED, "JWT_INVALID", "토큰이 유효하지 않습니다.");
+    JWT_INVALID(HttpStatus.UNAUTHORIZED, "JWT_INVALID", "토큰이 유효하지 않습니다."),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "알 수 없는 오류입니다.");
 
 
     CommonErrorCode(HttpStatus httpStatus, String code, String message) {
