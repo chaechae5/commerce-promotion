@@ -69,4 +69,54 @@ public class AuthServiceImpl implements AuthService {
                 .principalId(principalId)
                 .build();
     }
+
+    @Override
+    public TokenResponse refreshTokens(String refreshToken) {
+        Claims claims;
+        try {
+            claims = jwtUtil.validateToken(refreshToken);
+        } catch (CommonCustomException e) {
+            if (e.getErrorCode() == CommonErrorCode.JWT_EXPIRED) {
+                log.warn("Refresh Token 만료: {}", e.getMessage());
+                throw new CommonCustomException(CommonErrorCode.REFRESH_TOKEN_EXPIRED);
+            } else if (e.getErrorCode() == CommonErrorCode.JWT_INVALID) {
+                log.warn("Refresh Token 유효성 검증 실패 (JWT 형식 오류 등): {}", e.getMessage());
+                throw new CommonCustomException(CommonErrorCode.INVALID_REFRESH_TOKEN);
+            } else {
+                log.error("Refresh Token 검증 중 예상치 못한 오류: {}", e.getMessage(), e);
+                throw e;
+            }
+        }
+
+        String principalId = extractPrincipalId(claims, CommonErrorCode.INVALID_REFRESH_TOKEN);
+        AuthProviderType authProviderType = getAuthProviderTypeFromClaims(claims);
+
+        // 새로운 토큰 발급
+        String newAccessToken = jwtUtil.generateAccessToken(principalId, authProviderType);
+        String newRefreshToken = jwtUtil.generateRefreshToken(principalId, authProviderType);
+
+        log.info("토큰 갱신 완료. principalId: {}, provider: {}", principalId, authProviderType);
+
+        return TokenResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .expiresIn(jwtUtil.getJwtAccessTokenExpiration())
+                .tokenType("Bearer")
+                .build();
+    }
+
+
+    private AuthProviderType getAuthProviderTypeFromClaims(Claims claims) {
+        String subjectString = claims.getSubject();
+        return AuthProviderType.fromValue(subjectString);
+    }
+
+    private String extractPrincipalId(Claims claims, CommonErrorCode errorCodeIfMissing) {
+        String principalId = claims.get("principalId", String.class);
+        if (principalId == null || principalId.isBlank()) {
+            log.warn("principalId 클레임 누락");
+            throw new CommonCustomException(errorCodeIfMissing);
+        }
+        return principalId;
+    }
 }
