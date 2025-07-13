@@ -12,12 +12,12 @@ public class CouponResponse {
     @Builder
     @AllArgsConstructor
     public static class Issue{
-        private Long couponIssueId;
-        private String code;
-        private String name;
-        private String description;
+        private String couponIssueId; //쿠폰 발급 publicId
+        private String code; //쿠폰코드
+        private String name; //쿠폰명
+        private String description; //쿠폰 description
         private LocalDateTime issuedAt;
         private LocalDateTime expireAt;
-        private String status;
+        private String status; //쿠폰 상태
     }
 }
