@@ -1,8 +1,0 @@
-spring:
-  application:
-    name: promo
-
-jwt:
-  secret: ${JWT_SECRET:default-secret-key-c3VwZ5Rm9ySFM1Mj=}
-  accessTokenExpiration: 3600 # 1시간 (초)
-  refreshTokenExpiration: 604800 # 7일 (초)
