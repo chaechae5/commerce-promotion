@@ -1,6 +1,7 @@
 package com.chae.promo.coupon.service;
 
 import com.chae.promo.common.jwt.JwtProvider;
+import com.chae.promo.common.util.UuidUtil;
 import com.chae.promo.coupon.dto.CouponResponse;
 import com.chae.promo.coupon.entity.Coupon;
 import com.chae.promo.coupon.entity.CouponIssue;
@@ -39,7 +40,6 @@ public class CouponServiceImpl implements CouponService{
 
         //토큰 검증 및 user id
         String userId = validateToken(token);
-
         Coupon coupon = findCoupon(couponCode);
 
         //redis key
@@ -64,11 +64,14 @@ public class CouponServiceImpl implements CouponService{
         LocalDateTime calculatedExpireAt = getCouponExpirationDateTime(coupon);
         saveRedisCouponIssue(userCouponKey, calculatedExpireAt);
 
+        //쿠폰 publicId 생성 (uuid)
+        String publicId = UuidUtil.generate();
+
         //DB에 저장
-        CouponIssue issue = saveCouponIssue(coupon, userId, calculatedExpireAt, stockKey, userCouponKey);
+        CouponIssue issue = saveCouponIssue(coupon, userId, calculatedExpireAt, stockKey, userCouponKey, publicId);
 
         return CouponResponse.Issue.builder()
-                .couponIssueId(issue.getId())
+                .couponIssueId(issue.getPublicId()) // publicId로 노출
                 .code(coupon.getCode())
                 .name(coupon.getName())
                 .description(coupon.getDescription())
@@ -124,7 +127,8 @@ public class CouponServiceImpl implements CouponService{
                                         String userId,
                                         LocalDateTime expireAt,
                                         String stockKey,
-                                        String userCouponKey) {
+                                        String userCouponKey,
+                                        String publicId) {
 
         CouponIssue issue = CouponIssue.builder()
                 .coupon(coupon)
@@ -132,6 +136,7 @@ public class CouponServiceImpl implements CouponService{
                 .issuedAt(LocalDateTime.now())
                 .expireAt(expireAt)
                 .status(CouponIssueStatus.ISSUED)
+                .publicId(publicId)
                 .build();
 
         try {
