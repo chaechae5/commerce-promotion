@@ -1,6 +1,6 @@
 package com.chae.promo.coupon.service;
 
-import com.chae.promo.common.jwt.JwtProvider;
+import com.chae.promo.common.jwt.JwtUtil;
 import com.chae.promo.common.util.UuidUtil;
 import com.chae.promo.coupon.dto.CouponResponse;
 import com.chae.promo.coupon.entity.Coupon;
@@ -10,6 +10,7 @@ import com.chae.promo.coupon.repository.CouponIssueRepository;
 import com.chae.promo.coupon.repository.CouponRepository;
 import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
+import io.jsonwebtoken.Claims;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class CouponServiceImpl implements CouponService{
 
-    private final JwtProvider jwtProvider;
+    private final JwtUtil jwtUtil;
     private final StringRedisTemplate redisTemplate;
 
     private final CouponRepository couponRepository;
@@ -39,7 +40,7 @@ public class CouponServiceImpl implements CouponService{
         String couponCode = "LABUBUISCOMMING";
 
         //토큰 검증 및 user id
-        String userId = validateToken(token);
+        String userId = validateTokenAndExtractPrincipalId(token);
         Coupon coupon = findCoupon(couponCode);
 
         //redis key
@@ -83,8 +84,9 @@ public class CouponServiceImpl implements CouponService{
     }
 
 
-    private String validateToken(String token){
-        return jwtProvider.validateAndGetAnonId(token);
+    private String validateTokenAndExtractPrincipalId(String token){
+        Claims claims = jwtUtil.validateToken(token);
+        return claims.get("principalId", String.class);
     }
 
     private Coupon findCoupon(String couponCode){
