@@ -16,7 +16,7 @@ import java.util.Date;
  * 토큰 생성, 서명, 파싱, 검증만 담당
  */
 @Component
-public class JwtProvider {
+public class JwtUtil {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
