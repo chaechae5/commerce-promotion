@@ -12,7 +12,7 @@ create table IF NOT EXISTS coupons
     expire_date    datetime                           null,
     valid_days     int                                null,
     created_at     datetime default CURRENT_TIMESTAMP null,
-    updated_at     datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    updated_at     datetime default CURRENT_TIMESTAMP null,
     constraint uq_public_id
         unique (public_id),
     constraint uq_code
@@ -30,11 +30,11 @@ create table IF NOT EXISTS coupons
     status     varchar(20) default 'ISSUED'          null,
     used_date  datetime                              null,
     created_at datetime    default CURRENT_TIMESTAMP null,
-    updated_at datetime    default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    updated_at datetime    default CURRENT_TIMESTAMP null,
     public_id  varchar(36)                           not null,
     constraint uq_coupon_user
         unique (coupon_id, user_id),
     constraint fk_coupon
-        foreign key (coupon_id) references promo_db.coupons (id)
+        foreign key (coupon_id) references coupons (id)
 );
 
