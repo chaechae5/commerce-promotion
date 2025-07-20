@@ -18,6 +18,7 @@ public enum CommonErrorCode {
     COUPON_OUT_OF_STOCK(HttpStatus.CONFLICT, "COUPON_OUT_OF_STOCK", "쿠폰이 소진되었습니다."),
     COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "COUPON_NOT_FOUND", "존재하지 않는 쿠폰입니다."),
     COUPON_ISSUE_SAVE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "COUPON_ISSUE_SAVE_FAIL", "쿠폰 발급 처리 중 오류가 발생했습니다."),
+    COUPON_ISSUE_DATA_ACCESS_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "COUPON_ISSUE_DATA_ACCESS_FAIL", "쿠폰 발급 처리 중 오류가 발생했습니다.")
 
     ;
 

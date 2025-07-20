@@ -2,94 +2,126 @@ package com.chae.promo.coupon.service;
 
 import com.chae.promo.common.jwt.JwtUtil;
 import com.chae.promo.common.util.UuidUtil;
+import com.chae.promo.coupon.dto.CouponRedisRequest;
 import com.chae.promo.coupon.dto.CouponResponse;
 import com.chae.promo.coupon.entity.Coupon;
 import com.chae.promo.coupon.entity.CouponIssue;
 import com.chae.promo.coupon.entity.CouponIssueStatus;
 import com.chae.promo.coupon.repository.CouponIssueRepository;
 import com.chae.promo.coupon.repository.CouponRepository;
+import com.chae.promo.coupon.service.redis.CouponRedisKeyManager;
+import com.chae.promo.coupon.service.redis.CouponRedisService;
+import com.chae.promo.coupon.util.CouponExpirationCalculator;
 import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
 import io.jsonwebtoken.Claims;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CouponServiceImpl implements CouponService{
+public class CouponServiceImpl implements CouponService {
 
     private final JwtUtil jwtUtil;
-    private final StringRedisTemplate redisTemplate;
-
     private final CouponRepository couponRepository;
     private final CouponIssueRepository couponIssueRepository;
 
+    private final CouponRedisService couponRedisService;
+    private final CouponExpirationCalculator couponExpirationCalculator;
+    private final CouponRedisKeyManager couponRedisKeyManager;
+    private final CouponIssuePersistenceService couponIssuePersistenceService;
 
-    @Transactional
     @Override
-    public CouponResponse.Issue issueCoupon(String token) {
+    public CouponResponse.Issue issueCoupon(String token) throws CommonCustomException {
         //coupon id - 쿠폰 종류 1개만 있다고 가정
         String couponCode = "LABUBUISCOMMING";
 
         //토큰 검증 및 user id
         String userId = validateTokenAndExtractPrincipalId(token);
+
+        // Redis Key 생성
+        String couponStockKey = couponRedisKeyManager.getCouponStockKey(couponCode);
+        String userCouponKey = couponRedisKeyManager.getUserCouponKey(userId, couponCode);
+        String couponTtlKey = couponRedisKeyManager.getCouponTtlKey(couponCode);
+
         Coupon coupon = findCoupon(couponCode);
 
-        //redis key
-        String userCouponKey = "coupon:user:" + userId + ":coupon:" + couponCode;
-        String stockKey = "coupon:stock:" + couponCode;
-
-        //redis 중복 발급
-        Boolean alreadyIssued = redisTemplate.hasKey(userCouponKey);
-        if (Boolean.TRUE.equals(alreadyIssued)) {
-            log.info("쿠폰 중복발급  userCouponKey: {}", userCouponKey);
-            throw new CommonCustomException(CommonErrorCode.COUPON_ALREADY_ISSUED);
+        LocalDateTime calculatedExpireAt;
+        long ttlSeconds;
+        LocalDateTime now = LocalDateTime.now(); //기준시점
+        try {
+            calculatedExpireAt = getCouponExpirationDateTime(coupon);
+            ttlSeconds = couponExpirationCalculator.calculateTtlSeconds(calculatedExpireAt, now);
+        } catch (CommonCustomException e) {
+            log.warn("쿠폰 만료일이 지났습니다. 발급 중단. couponCode: {}", couponCode);
+            throw e;
         }
 
-        //redis 재고 차감
-        Long stock = redisTemplate.opsForValue().decrement(stockKey);
-        if (stock == null || stock < 0) {
-            log.info("쿠폰 소진 couponCode: {}", couponCode);
-            throw new CommonCustomException(CommonErrorCode.COUPON_SOLD_OUT);
-        }
+        // Redis에 재고가 없으면 DB에서 불러와 캐시
+        initializeCouponCacheIfNeeded(coupon, couponStockKey, couponTtlKey, ttlSeconds);
 
-        //redis 발급 상태 저장
-        LocalDateTime calculatedExpireAt = getCouponExpirationDateTime(coupon);
-        saveRedisCouponIssue(userCouponKey, calculatedExpireAt);
-
-        //쿠폰 publicId 생성 (uuid)
-        String publicId = UuidUtil.generate();
-
-        //DB에 저장
-        CouponIssue issue = saveCouponIssue(coupon, userId, calculatedExpireAt, stockKey, userCouponKey, publicId);
-
-        return CouponResponse.Issue.builder()
-                .couponIssueId(issue.getPublicId()) // publicId로 노출
-                .code(coupon.getCode())
-                .name(coupon.getName())
-                .description(coupon.getDescription())
-                .issuedAt(issue.getIssuedAt())
-                .expireAt(issue.getExpireAt())
-                .status(issue.getStatus().name())
+        CouponRedisRequest couponRedisRequest = CouponRedisRequest.builder()
+                .coupon(coupon)
+                .couponStockKey(couponStockKey)
+                .userCouponKey(userCouponKey)
+                .couponTtlKey(couponTtlKey)
+                .userId(userId)
+                .couponIssueStatus(CouponIssueStatus.ISSUED)
+                .ttlSeconds(ttlSeconds)
                 .build();
+
+        try {
+            // Redis Lua 스크립트를 사용하여 원자적으로 쿠폰 확인, 재고 차감 및 발급 상태 저장
+            couponRedisService.issueCouponAtomically(couponRedisRequest);
+        } catch (DataAccessException e) {
+            //Redis 시스템 장애 처리 (연결 실패, 타입 불일치 등)
+            log.error("Redis 작업 중 시스템 예외 발생. userId: {}, couponCode: {}", userId, couponCode, e);
+            throw new CommonCustomException(CommonErrorCode.COUPON_ISSUE_DATA_ACCESS_FAIL);
+        }
+
+        try {
+            //쿠폰 publicId 생성 (uuid)
+            String publicId = UuidUtil.generate();
+
+            //DB에 저장 - couponIssuePersistenceService로 위임
+            CouponIssue issue = couponIssuePersistenceService.saveCouponIssue(coupon, userId, calculatedExpireAt, publicId);
+
+            return CouponResponse.Issue.builder()
+                    .couponIssueId(issue.getPublicId()) // publicId로 노출
+                    .code(coupon.getCode())
+                    .name(coupon.getName())
+                    .description(coupon.getDescription())
+                    .issuedAt(issue.getIssuedAt())
+                    .expireAt(issue.getExpireAt())
+                    .status(issue.getStatus().name())
+                    .build();
+
+        } catch (Exception e) {
+            // DB 저장 실패 시 Redis 롤백
+            log.error("DB 저장 실패로 Redis 롤백 수행. userId: {}, couponCode: {}", userId, couponCode, e);
+            couponRedisService.rollbackRedisCouponStock(couponStockKey, userCouponKey);
+
+            throw new CommonCustomException(CommonErrorCode.COUPON_ISSUE_SAVE_FAIL);
+        }
 
     }
 
+    private LocalDateTime getCouponExpirationDateTime(Coupon coupon) {
+        LocalDateTime now = LocalDateTime.now();
+        return couponExpirationCalculator.calculateExpiration(coupon, now);
+    }
 
-    private String validateTokenAndExtractPrincipalId(String token){
+    private String validateTokenAndExtractPrincipalId(String token) {
         Claims claims = jwtUtil.validateToken(token);
         return claims.get("principalId", String.class);
     }
 
-    private Coupon findCoupon(String couponCode){
+    private Coupon findCoupon(String couponCode) {
         return couponRepository.findByCode(couponCode)
                 .orElseThrow(() -> {
                     log.warn("쿠폰 조회 실패 couponCode: {}", couponCode);
@@ -97,77 +129,41 @@ public class CouponServiceImpl implements CouponService{
                 });
     }
 
-    private LocalDateTime getCouponExpirationDateTime(Coupon coupon) {
-        if (coupon.getValidDays() != null && coupon.getValidDays() > 0) {
-            return LocalDateTime.now().plusDays(coupon.getValidDays());
-        } else if (coupon.getExpireDate() != null) {
-            return coupon.getExpireDate();
-        } else {
-            // 둘 다 없는 경우, 기본 만료일 또는 오류 처리
-            log.warn("쿠폰 {}의 유효 일수 및 만료일이 설정되지 않았습니다. 기본 7일 유효 기간 적용.", coupon.getCode());
-            return LocalDateTime.now().plusDays(7);
+    /**
+     * 쿠폰 발급에 필요한 재고와 TTL 정보를 Redis에 설정
+     */
+    private void initializeCouponCacheIfNeeded(Coupon coupon, String couponStockKey, String couponTtlKey, long ttlSeconds) {
+        //재고 키 확인 및 생성
+        if (Boolean.FALSE.equals(couponRedisService.hasKey(couponStockKey))) {
+            log.info("Redis에 쿠폰 재고 {}가 없습니다. DB에서 로드하여 캐시합니다.", couponStockKey);
+
+            initializeCouponStockFromDB(coupon, couponStockKey);
+        }
+
+        //ttl 키 확인 및 생성
+        if (Boolean.FALSE.equals(couponRedisService.hasKey(couponTtlKey))) {
+            log.info("Redis에 쿠폰 TTL 키 [{}]가 없습니다. 만료 시간을 설정합니다.", couponTtlKey);
+
+            // 남은 시간이 있는 경우에만 TTL 키 생성
+            if (ttlSeconds > 0) {
+                couponRedisService.setCouponTtlKey(couponTtlKey, ttlSeconds);
+            } else {
+                log.warn("쿠폰 [{}]의 유효 기간이 이미 만료되었습니다. TTL 키를 생성하지 않습니다.", coupon.getCode());
+            }
         }
     }
 
-    private long calculateTtlSeconds(LocalDateTime expireAt){
-        Duration duration = Duration.between(LocalDateTime.now(), expireAt);
-        long ttl = duration.getSeconds();
-        if (ttl < 0) {
-            log.warn("쿠폰 만료 TTL < 0. 1초로 설정");
-            return 1;
-        }
-        return ttl;
+
+    private void initializeCouponStockFromDB(Coupon coupon, String couponStockKey) {
+        // 실제 남은 재고 = 전체 수량 - 이미 발급된 수량
+        long issuedCount = couponIssueRepository.countByCouponIdAndStatus(
+                coupon.getId(), CouponIssueStatus.ISSUED);
+
+        long remainingStock = Math.max(0, coupon.getTotalQuantity() - issuedCount);
+
+        couponRedisService.setCouponStock(couponStockKey, remainingStock);
+        log.info("Redis 재고 초기화 완료. couponCode: {}, 전체={}, 발급됨={}, 남은재고={}",
+                coupon.getCode(), coupon.getTotalQuantity(), issuedCount, remainingStock);
     }
-
-    private void saveRedisCouponIssue(String userCouponKey,LocalDateTime expireAt) {
-        long ttlSeconds = calculateTtlSeconds(expireAt);
-        redisTemplate.opsForValue().set(userCouponKey, "issued", ttlSeconds, TimeUnit.SECONDS);
-        log.debug("쿠폰 발급 상태 저장 완료. key: {}, ttl: {}초", userCouponKey, ttlSeconds);
-    }
-
-    private CouponIssue saveCouponIssue(Coupon coupon,
-                                        String userId,
-                                        LocalDateTime expireAt,
-                                        String stockKey,
-                                        String userCouponKey,
-                                        String publicId) {
-
-        CouponIssue issue = CouponIssue.builder()
-                .coupon(coupon)
-                .userId(userId)
-                .issuedAt(LocalDateTime.now())
-                .expireAt(expireAt)
-                .status(CouponIssueStatus.ISSUED)
-                .publicId(publicId)
-                .build();
-
-        try {
-            CouponIssue savedIssue = couponIssueRepository.save(issue);
-            log.info("쿠폰 발급 DB 저장 완료. userId: {}, couponCode: {}, couponIssueId: {}",
-                    userId, coupon.getCode(), savedIssue.getId());
-            return savedIssue;
-
-        } catch (Exception e) {
-            log.error("쿠폰 발급 DB 저장 실패. userId: {}, couponCode: {}", userId, coupon.getCode(), e);
-            rollbackRedisCouponStock(stockKey, userCouponKey);
-            throw new CommonCustomException(CommonErrorCode.COUPON_ISSUE_SAVE_FAIL);
-        }
-
-
-    }
-
-    private void rollbackRedisCouponStock(String stockKey, String userCouponKey) {
-        try {
-            redisTemplate.opsForValue().increment(stockKey);
-            redisTemplate.delete(userCouponKey);
-            log.info("Redis 롤백 완료. stockKey: {}, userCouponKey: {}",
-                    stockKey, userCouponKey);
-        } catch (Exception rollbackException) {
-            log.error("Redis 롤백 실패. stockKey: {}, userCouponKey: {}",
-                    stockKey, userCouponKey, rollbackException);
-        }
-
-    }
-
 
 }
