@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # --- 개발(dev) 환경 서비스 ---
   backend-dev:
-    build: .
+    build: ./backend
     container_name: promo_backend_dev
     env_file: .env.dev # dev 환경 변수 파일 사용
     environment:
@@ -11,8 +11,12 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db-dev
-      - redis-dev
+      # - db-dev
+      # - redis-dev
+      db-dev:
+        condition: service_healthy # db-dev가 healthy 상태가 될 때까지 기다립니다.
+      redis-dev:
+        condition: service_started
     restart: unless-stopped
 
   db-dev:
@@ -24,11 +28,17 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --time-zone=Asia/Seoul
+      - --default-time-zone=Asia/Seoul
     volumes:
       - dev-db-data:/var/lib/mysql
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./db/init.dev.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"] # 연결 가능 상태인지 확인
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis-dev:
     image: redis:7.2-alpine
@@ -41,7 +51,7 @@ services:
 
   # --- 운영(prod) 환경 서비스 ---
   backend-prod:
-    build: .
+    build: ./backend
     container_name: promo_backend_prod
     env_file: .env.prod # prod 환경 변수 파일 사용
     environment:
@@ -60,7 +70,7 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --time-zone=Asia/Seoul
+      - --default-time-zone=Asia/Seoul
     volumes:
       - prod-db-data:/var/lib/mysql
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
