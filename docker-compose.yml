@@ -1,29 +1,78 @@
 version: "3.8"
 
 services:
-  redis:
-    image: redis:7.2-alpine
-    container_name: promo_redis
+  # --- 개발(dev) 환경 서비스 ---
+  backend-dev:
+    build: .
+    container_name: promo_backend_dev
+    env_file: .env.dev # dev 환경 변수 파일 사용
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev # dev 프로필 활성화
     ports:
-      - "6379:6379"
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"] 
+      - "8080:8080"
+    depends_on:
+      - db-dev
+      - redis-dev
     restart: unless-stopped
 
-  mysql:
+  db-dev:
     image: mysql:8.0
-    container_name: promo_mysql
+    container_name: promo_mysql_dev
+    env_file: .env.dev # dev 환경 변수 파일 사용
     ports:
       - "3307:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --time-zone=Asia/Seoul
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - dev-db-data:/var/lib/mysql
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
     restart: unless-stopped
 
+  redis-dev:
+    image: redis:7.2-alpine
+    container_name: promo_redis_dev
+    env_file: .env.dev # dev 환경 변수 파일 사용
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    restart: unless-stopped
+
+  # --- 운영(prod) 환경 서비스 ---
+  backend-prod:
+    build: .
+    container_name: promo_backend_prod
+    env_file: .env.prod # prod 환경 변수 파일 사용
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod # prod 프로필 활성화
+    ports:
+      - "80:8080"
+    depends_on:
+      - db-prod
+      - redis-prod
+    restart: unless-stopped
+  
+  db-prod:
+    image: mysql:8.0
+    container_name: promo_mysql_prod
+    env_file: .env.prod # prod 환경 변수 파일 사용
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --time-zone=Asia/Seoul
+    volumes:
+      - prod-db-data:/var/lib/mysql
+      - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
+    restart: unless-stopped
+
+  redis-prod:
+    image: redis:7.2-alpine
+    container_name: promo_redis_prod
+    env_file: .env.prod # prod 환경 변수 파일 사용
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    restart: unless-stopped
+
 volumes:
-  mysql_data:
+  dev-db-data:
+  prod-db-data:

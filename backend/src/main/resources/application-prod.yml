@@ -1,0 +1,38 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    username: ${DB_USER}
+    password: ${DB_PASS}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASS}
+
+  jpa:
+    hibernate:
+      ddl-auto: none # 운영환경 none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  flyway:
+    enabled: true  # Flyway 활성화 (기본값: true)
+    baseline-on-migrate: false # 운영환경 false
+    locations: classpath:db/migration # SQL 파일 위치 지정 (기본값)
+
+jwt:
+  secret: ${JWT_SECRET:default-secret-key-c3VwZ5Rm9ySFM1Mj=}
+  accessTokenExpiration: 900 # 15분 (초)
+  refreshTokenExpiration: 604800 # 7일 (초)
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.hibernate.SQL: INFO
