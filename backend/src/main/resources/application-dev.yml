@@ -1,0 +1,39 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:promo_dev_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    username: ${DB_USER:promo_user}
+    password: ${DB_PASS:promo_pass}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASS:redispass}
+
+  jpa:
+    hibernate:
+      ddl-auto: none # Flyway와 충돌 방지를 위해 'none'으로 변경
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+
+jwt:
+  secret: ${JWT_SECRET:default-secret-key-dev-DN1575Rm9ySJWNEMj=}
+  accessTokenExpiration: 3600 # 1시간 (초)
+  refreshTokenExpiration: 604800 # 7일 (초)
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

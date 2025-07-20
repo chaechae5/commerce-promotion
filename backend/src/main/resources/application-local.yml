@@ -1,0 +1,44 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: jdbc:h2:mem:promo_local_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASS:redispass}
+
+  jpa:
+    hibernate:
+      ddl-auto: none # Flyway와 충돌 방지를 위해 'none'으로 변경
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed
+
+jwt:
+  secret: ${JWT_SECRET:default-secret-key-local-hellojwt123456}
+  accessTokenExpiration: 86400 # 24시간 (초)
+  refreshTokenExpiration: 1209600 # 14일 (초)
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
