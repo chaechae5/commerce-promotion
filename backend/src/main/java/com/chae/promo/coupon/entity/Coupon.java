@@ -17,8 +17,12 @@ public class Coupon extends BaseTime {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true, length = 21)
+    private String publicId;
+
     @Column(nullable = false, unique = true)
     private String code;
+
     private String name;
     private String description;
     @Column(nullable = false)
