@@ -37,7 +37,6 @@ public enum AuthProviderType {
         throw new AuthException(CommonErrorCode.UNSUPPORTED_AUTH_PROVIDER);
     }
 
-    // 자신의 전략(resolver)을 반환하는 메소드
     public UserPrincipalResolver getResolver() {
         return resolver;
     }
