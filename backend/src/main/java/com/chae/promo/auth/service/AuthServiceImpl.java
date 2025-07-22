@@ -3,7 +3,7 @@ package com.chae.promo.auth.service;
 import com.chae.promo.auth.domain.AuthProviderType;
 import com.chae.promo.auth.dto.TokenResponse;
 import com.chae.promo.auth.dto.TokenValidationResponse;
-import com.chae.promo.common.jwt.JwtUtil;
+import com.chae.promo.security.JwtUtil;
 import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
 import io.jsonwebtoken.Claims;

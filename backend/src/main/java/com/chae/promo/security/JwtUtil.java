@@ -1,7 +1,7 @@
-package com.chae.promo.common.jwt;
+package com.chae.promo.security;
 
 import com.chae.promo.auth.domain.AuthProviderType;
-import com.chae.promo.exception.CommonCustomException;
+import com.chae.promo.exception.AuthException;
 import com.chae.promo.exception.CommonErrorCode;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -79,7 +79,7 @@ public class JwtUtil {
      */
     public Claims validateToken(String token) {
         if (token == null || token.isBlank()) {
-            throw new CommonCustomException(CommonErrorCode.JWT_INVALID);
+            throw new AuthException(CommonErrorCode.JWT_INVALID);
         }
 
         try {
@@ -95,9 +95,9 @@ public class JwtUtil {
 
             return claims;
         } catch (ExpiredJwtException e) {
-            throw new CommonCustomException(CommonErrorCode.JWT_EXPIRED);
+            throw new AuthException(CommonErrorCode.JWT_EXPIRED);
         } catch (JwtException e) {
-            throw new CommonCustomException(CommonErrorCode.JWT_INVALID);
+            throw new AuthException(CommonErrorCode.JWT_INVALID);
         }
     }
 }

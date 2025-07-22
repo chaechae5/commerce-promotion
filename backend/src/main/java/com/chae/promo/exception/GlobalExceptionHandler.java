@@ -15,10 +15,11 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // AuthException을 제외한 다른 CommonCustomException들을 처리
     @ExceptionHandler(CommonCustomException.class)
-    protected ResponseEntity<CommonErrorResponse> handleUserCustomException(CommonCustomException e, HttpServletRequest request) {
+    protected ResponseEntity<CommonErrorResponse> handleCustomException(CommonCustomException e, HttpServletRequest request) {
 
-        logException(e, request);
+        logCustomException(e, request);
         return createErrorResponse(e.getErrorCode(), request);
     }
 
@@ -33,12 +34,13 @@ public class GlobalExceptionHandler {
         return createErrorResponse(errorCode, request);
     }
 
-    private void logException(CommonCustomException e, HttpServletRequest request) {
+    //CommonCustomException 로깅 메서드
+    private void logCustomException(CommonCustomException e, HttpServletRequest request) {
         String requestInfo = String.format("요청경로='%s', 코드=%s, 메시지='%s'",
                 request.getRequestURI(), e.getErrorCode().getCode(), e.getMessage());
 
         switch (e.getErrorCode()) {
-            case JWT_INVALID, JWT_EXPIRED -> log.warn("JWT 관련 오류: {}", requestInfo);
+//            case JWT_INVALID, JWT_EXPIRED -> log.warn("JWT 관련 오류: {}", requestInfo);
             case INTERNAL_SERVER_ERROR -> log.error("내부 서버 오류: {}", requestInfo, e);
             default -> log.warn("CommonCustomException 발생: {}", requestInfo);
         }
@@ -66,6 +68,21 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 errors // 유효성 검증 상세 오류 맵 전달
         );
+    }
+
+    /**
+     * 인증관련 예외 처리
+     * @param e
+     * @param request
+     * @return
+     */
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<CommonErrorResponse> handleAuthException(AuthException e, HttpServletRequest request) {
+
+        log.warn("인증 오류 발생: 요청경로='{}', 코드={}, 메시지='{}'",
+                request.getRequestURI(), e.getErrorCode(), e.getMessage());
+
+        return createErrorResponse(e.getErrorCode(), request);
     }
 
 }
