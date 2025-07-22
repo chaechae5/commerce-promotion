@@ -1,6 +1,6 @@
 package com.chae.promo.coupon.service;
 
-import com.chae.promo.common.jwt.JwtUtil;
+import com.chae.promo.security.JwtUtil;
 import com.chae.promo.common.util.UuidUtil;
 import com.chae.promo.coupon.dto.CouponRedisRequest;
 import com.chae.promo.coupon.dto.CouponResponse;
@@ -37,7 +37,7 @@ public class CouponServiceImpl implements CouponService {
     private final CouponIssuePersistenceService couponIssuePersistenceService;
 
     @Override
-    public CouponResponse.Issue issueCoupon(String token) throws CommonCustomException {
+    public CouponResponse.Issue issueCoupon(String userId) {
         //coupon id - 쿠폰 종류 1개만 있다고 가정
         String couponCode = "LABUBUISCOMMING";
 
