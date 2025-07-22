@@ -73,6 +73,15 @@ public class JwtUtil {
     }
 
     /**
+     * refreshToken의 만료 초 반환
+     * @return 만료 초
+     */
+    public long getJwtRefreshTokenExpiration(){
+        return jwtAccessTokenExpiration;
+    }
+
+
+    /**
      * 토큰 검증하고 Claims 객체 반환 공통 메서드
      * @param token
      * @return Claims
