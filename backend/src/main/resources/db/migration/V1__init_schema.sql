@@ -19,7 +19,7 @@ create table IF NOT EXISTS coupons
         unique (code)
 );
 
-create table IF NOT EXISTS coupons
+create table IF NOT EXISTS coupon_issue
 (
     id         bigint auto_increment
         primary key,
