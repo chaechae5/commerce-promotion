@@ -1,6 +1,7 @@
 package com.chae.promo.auth.domain;
 
 import com.chae.promo.exception.AuthException;
+import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
 import com.chae.promo.security.resolver.AnonymousUserPrincipalResolver;
 import com.chae.promo.security.resolver.UserPrincipalResolver;
@@ -11,7 +12,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum AuthProviderType {
 
-    ANONYMOUS("anonymous", new AnonymousUserPrincipalResolver());
+    ANONYMOUS("ANONYMOUS", new AnonymousUserPrincipalResolver());
 
     private final String value;
     private final UserPrincipalResolver resolver;
@@ -32,9 +33,8 @@ public enum AuthProviderType {
             return AuthProviderType.valueOf(value); //enum 이름과 값이 같을 때 valueOf()이 효율적 O(1)
         } catch (IllegalArgumentException e ) {
             // 일치하는 Enum 상수를 찾지 못했을 때의 예외 처리
-            throw new CommonCustomException(CommonErrorCode.VALIDATION_FAILED);
+            throw new AuthException(CommonErrorCode.UNSUPPORTED_AUTH_PROVIDER);
         }
-        throw new AuthException(CommonErrorCode.UNSUPPORTED_AUTH_PROVIDER);
     }
 
     public UserPrincipalResolver getResolver() {
