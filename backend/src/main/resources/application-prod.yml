@@ -27,6 +27,18 @@ spring:
     baseline-on-migrate: false # 운영환경 false
     locations: classpath:db/migration # SQL 파일 위치 지정 (기본값)
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: coupon-group # Consumer 그룹 ID 지정
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*" # 모든 패키지의 DTO를 신뢰하도록 설정
+
 jwt:
   secret: ${JWT_SECRET:default-secret-key-c3VwZ5Rm9ySFM1Mj=}
   accessTokenExpiration: 900 # 15분 (초)

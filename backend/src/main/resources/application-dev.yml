@@ -27,6 +27,18 @@ spring:
   flyway:
     locations: classpath:db/migration,classpath:db/migration/seed
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: coupon-group # Consumer 그룹 ID 지정
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*" # 모든 패키지의 DTO를 신뢰하도록 설정
+
 jwt:
   secret: ${JWT_SECRET:default-secret-key-dev-DN1575Rm9ySJWNEMj=}
   accessTokenExpiration: 3600 # 1시간 (초)
