@@ -1,12 +1,12 @@
 package com.chae.promo.coupon.service;
 
-import com.chae.promo.security.JwtUtil;
 import com.chae.promo.common.util.UuidUtil;
 import com.chae.promo.coupon.dto.CouponRedisRequest;
 import com.chae.promo.coupon.dto.CouponResponse;
 import com.chae.promo.coupon.entity.Coupon;
-import com.chae.promo.coupon.entity.CouponIssue;
 import com.chae.promo.coupon.entity.CouponIssueStatus;
+import com.chae.promo.coupon.event.CouponEventPublisher;
+import com.chae.promo.coupon.event.CouponIssuedEvent;
 import com.chae.promo.coupon.repository.CouponIssueRepository;
 import com.chae.promo.coupon.repository.CouponRepository;
 import com.chae.promo.coupon.service.redis.CouponRedisKeyManager;
@@ -14,7 +14,6 @@ import com.chae.promo.coupon.service.redis.CouponRedisService;
 import com.chae.promo.coupon.util.CouponExpirationCalculator;
 import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
-import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -26,15 +25,13 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class CouponServiceImpl implements CouponService {
-
-    private final JwtUtil jwtUtil;
     private final CouponRepository couponRepository;
     private final CouponIssueRepository couponIssueRepository;
 
     private final CouponRedisService couponRedisService;
     private final CouponExpirationCalculator couponExpirationCalculator;
     private final CouponRedisKeyManager couponRedisKeyManager;
-    private final CouponIssuePersistenceService couponIssuePersistenceService;
+    private final CouponEventPublisher couponEventPublisher;
 
     @Override
     public CouponResponse.Issue issueCoupon(String userId) {
@@ -46,8 +43,9 @@ public class CouponServiceImpl implements CouponService {
 
         // Redis Key 생성
         String couponStockKey = couponRedisKeyManager.getCouponStockKey(couponCode);
-        String userCouponKey = couponRedisKeyManager.getUserCouponKey(userId, couponCode);
+        String userCouponSetKey = couponRedisKeyManager.getUserCouponSetKey(userId);
         String couponTtlKey = couponRedisKeyManager.getCouponTtlKey(couponCode);
+        String couponIssuedUserSetKey = couponRedisKeyManager.getCouponIssuedUserSetKey(couponCode);
 
         Coupon coupon = findCoupon(couponCode);
 
@@ -68,11 +66,12 @@ public class CouponServiceImpl implements CouponService {
         CouponRedisRequest couponRedisRequest = CouponRedisRequest.builder()
                 .coupon(coupon)
                 .couponStockKey(couponStockKey)
-                .userCouponKey(userCouponKey)
+                .userCouponSetKey(userCouponSetKey)
                 .couponTtlKey(couponTtlKey)
                 .userId(userId)
                 .couponIssueStatus(CouponIssueStatus.ISSUED)
                 .ttlSeconds(ttlSeconds)
+                .couponIssuedUserSetKey(couponIssuedUserSetKey)
                 .build();
 
         try {
@@ -84,30 +83,34 @@ public class CouponServiceImpl implements CouponService {
             throw new CommonCustomException(CommonErrorCode.COUPON_ISSUE_DATA_ACCESS_FAIL);
         }
 
-        try {
-            //쿠폰 publicId 생성 (uuid)
-            String publicId = UuidUtil.generate();
+        //쿠폰 publicId 생성 (uuid)
+        String couponIssueId = UuidUtil.generate();
 
-            //DB에 저장 - couponIssuePersistenceService로 위임
-            CouponIssue issue = couponIssuePersistenceService.saveCouponIssue(coupon, userId, calculatedExpireAt, publicId);
+        couponEventPublisher.publishCouponIssued(
+                CouponIssuedEvent.builder()
+                        .eventId(UuidUtil.generate()) // 고유 ID로 사용
+                        .userId(userId)
+                        .couponIssueId(couponIssueId)
+                        .couponPublicId(coupon.getPublicId())
+                        .expiredAt(calculatedExpireAt)
+                        .issuedAt(now)
+                        .userCouponSetKey(userCouponSetKey)
+                        .couponStockKey(couponStockKey)
+                        .couponIssuedUserSetKey(couponIssuedUserSetKey)
+                        .build()
+        );
 
-            return CouponResponse.Issue.builder()
-                    .couponIssueId(issue.getPublicId()) // publicId로 노출
-                    .code(coupon.getCode())
-                    .name(coupon.getName())
-                    .description(coupon.getDescription())
-                    .issuedAt(issue.getIssuedAt())
-                    .expireAt(issue.getExpireAt())
-                    .status(issue.getStatus().name())
-                    .build();
+        log.info("쿠폰 발급 완료. userId: {}, couponCode: {}, publicId: {}", userId, couponCode, couponIssueId);
 
-        } catch (Exception e) {
-            // DB 저장 실패 시 Redis 롤백
-            log.error("DB 저장 실패로 Redis 롤백 수행. userId: {}, couponCode: {}", userId, couponCode, e);
-            couponRedisService.rollbackRedisCouponStock(couponStockKey, userCouponKey);
-
-            throw new CommonCustomException(CommonErrorCode.COUPON_ISSUE_SAVE_FAIL);
-        }
+        return CouponResponse.Issue.builder()
+                .couponIssueId(couponIssueId) // publicId로 노출
+                .code(coupon.getCode())
+                .name(coupon.getName())
+                .description(coupon.getDescription())
+                .issuedAt(now)
+                .expireAt(calculatedExpireAt)
+                .status(CouponIssueStatus.ISSUED.getValue())
+                .build();
 
     }
 
@@ -115,12 +118,13 @@ public class CouponServiceImpl implements CouponService {
         LocalDateTime now = LocalDateTime.now();
         return couponExpirationCalculator.calculateExpiration(coupon, now);
     }
-
-    private String validateTokenAndExtractPrincipalId(String token) {
-        Claims claims = jwtUtil.validateToken(token);
-        return claims.get("principalId", String.class);
-    }
-
+    /**
+     * 쿠폰 코드로 쿠폰을 조회
+     * 쿠폰이 존재하지 않으면 예외를 발생
+     *
+     * @param couponCode 쿠폰 코드
+     * @return 쿠폰 엔티티
+     */
     private Coupon findCoupon(String couponCode) {
         return couponRepository.findByCode(couponCode)
                 .orElseThrow(() -> {

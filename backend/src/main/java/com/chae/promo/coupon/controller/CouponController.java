@@ -1,7 +1,7 @@
 package com.chae.promo.coupon.controller;
 
 import com.chae.promo.coupon.dto.CouponResponse;
-import com.chae.promo.coupon.service.CouponServiceImpl;
+import com.chae.promo.coupon.service.CouponService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "쿠폰 api")
 public class CouponController {
 
-    private final CouponServiceImpl couponService;
+    private final CouponService couponService;
 
     @PostMapping("/issue")
     @Operation(summary = "쿠폰 발급")
