@@ -29,7 +29,9 @@ public class CouponDLQConsumer {
         // 보상 트랜잭션: Redis 재고 롤백
         couponRedisService.rollbackRedisCouponStock(failedEvent.getCouponStockKey(),
                 failedEvent.getUserCouponSetKey(),
-                failedEvent.getCouponIssuedUserSetKey()
+                failedEvent.getCouponIssuedUserSetKey(),
+                failedEvent.getUserId(),
+                failedEvent.getCouponPublicId()
         );
 
         // todo. 사용자에게 실패 알림

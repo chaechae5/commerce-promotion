@@ -12,9 +12,10 @@ import lombok.*;
 public class CouponRedisRequest {
     private Coupon coupon;
     private String couponStockKey;
-    private String userCouponKey;
+    private String userCouponSetKey;
     private String couponTtlKey;
     private String userId;
     private CouponIssueStatus couponIssueStatus;
     private long ttlSeconds;
+    private String couponIssuedUserSetKey;
 }
