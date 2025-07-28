@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -40,20 +41,30 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(), e.getErrorCode().getCode(), e.getMessage());
 
         switch (e.getErrorCode()) {
-//            case JWT_INVALID, JWT_EXPIRED -> log.warn("JWT 관련 오류: {}", requestInfo);
             case INTERNAL_SERVER_ERROR -> log.error("내부 서버 오류: {}", requestInfo, e);
             default -> log.warn("CommonCustomException 발생: {}", requestInfo);
         }
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<CommonErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
+    @ExceptionHandler({MethodArgumentNotValidException.class, MissingServletRequestParameterException.class})
+    public ResponseEntity<CommonErrorResponse> handleValidationExceptions(Exception ex, HttpServletRequest request) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+
+        // 1. MethodArgumentNotValidException 처리 (@Valid, @Validated)
+        if (ex instanceof MethodArgumentNotValidException) {
+            MethodArgumentNotValidException manve = (MethodArgumentNotValidException) ex;
+            manve.getBindingResult().getAllErrors().forEach(error -> {
+                String fieldName = ((FieldError) error).getField();
+                String errorMessage = error.getDefaultMessage();
+                errors.put(fieldName, errorMessage);
+            });
+        }
+        // 2. MissingServletRequestParameterException 처리 (@RequestParam)
+        else if (ex instanceof MissingServletRequestParameterException) {
+            MissingServletRequestParameterException msrpe = (MissingServletRequestParameterException) ex;
+            String parameterName = msrpe.getParameterName();
+            errors.put(parameterName, "필수 파라미터가 누락되었습니다.");
+        }
 
         String requestInfo = String.format(
                 "요청경로='%s', 코드=%s, 메시지='%s'",
