@@ -4,9 +4,11 @@ import com.chae.promo.common.util.UuidUtil;
 import com.chae.promo.coupon.dto.CouponRedisRequest;
 import com.chae.promo.coupon.dto.CouponResponse;
 import com.chae.promo.coupon.entity.Coupon;
+import com.chae.promo.coupon.entity.CouponIssue;
 import com.chae.promo.coupon.entity.CouponIssueStatus;
 import com.chae.promo.coupon.event.CouponEventPublisher;
 import com.chae.promo.coupon.event.CouponIssuedEvent;
+import com.chae.promo.coupon.mapper.CouponMapper;
 import com.chae.promo.coupon.repository.CouponIssueRepository;
 import com.chae.promo.coupon.repository.CouponRepository;
 import com.chae.promo.coupon.service.redis.CouponRedisKeyManager;
@@ -17,9 +19,12 @@ import com.chae.promo.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -32,6 +37,9 @@ public class CouponServiceImpl implements CouponService {
     private final CouponExpirationCalculator couponExpirationCalculator;
     private final CouponRedisKeyManager couponRedisKeyManager;
     private final CouponEventPublisher couponEventPublisher;
+    private final CouponMapper couponMapper;
+
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     public CouponResponse.Issue issueCoupon(String userId, String couponId) {
@@ -39,9 +47,6 @@ public class CouponServiceImpl implements CouponService {
         // 쿠폰 id로 쿠폰 조회
         Coupon coupon = findCouponByPublicId(couponId);
         String couponCode = coupon.getCode();
-
-        //토큰 검증 및 user id
-        String userId = validateTokenAndExtractPrincipalId(token);
 
         // Redis Key 생성
         String couponStockKey = couponRedisKeyManager.getCouponStockKey(couponId, couponCode);
@@ -168,4 +173,42 @@ public class CouponServiceImpl implements CouponService {
                 coupon.getCode(), coupon.getTotalQuantity(), issuedCount, remainingStock);
     }
 
+    @Override
+    public List<CouponResponse.Info> getAll() {
+        List<Coupon> coupons = couponRepository.findAll();
+
+        return couponMapper.toInfoListFromCoupons(coupons);
+    }
+
+    @Override
+    public List<CouponResponse.Info> getMyCoupons(String userId) {
+        String userCouponSetKey = couponRedisKeyManager.getUserCouponSetKey(userId);
+
+        Set<String> couponIds = redisTemplate.opsForSet().members(userCouponSetKey);
+
+        // Redis에 쿠폰 ID 목록이 있는 경우
+        if (couponIds != null && !couponIds.isEmpty()) {
+            log.info("Cache Hit - 유저 쿠폰 정보 redis 조회 userId: {}", userId);
+
+            List<Coupon> coupons = couponRepository.findByPublicIdIn(couponIds);
+            return couponMapper.toInfoListFromCoupons(coupons);
+        }
+
+        //Redis에 정보가 없는 경우 DB에서 조회
+        log.info("Cache Miss - 유저 쿠폰 정보 userId: {}. db 조회 시작 ", userId);
+        List<CouponIssue> couponIssuesFromDb = couponIssueRepository.findByUserId(userId);
+
+        if (!couponIssuesFromDb.isEmpty()) {
+            // CouponIssue 리스트에서 couponId만 추출
+            List<String> idsToCache = couponIssuesFromDb.stream()
+                    .map(issue -> issue.getCoupon().getPublicId())
+                    .toList();
+
+            // Redis Set에 추가
+            redisTemplate.opsForSet().add(userCouponSetKey, idsToCache.toArray(new String[0]));
+            log.info("Cache - redis에 사용자 쿠폰 캐시 저장 userId: {}", userId);
+        }
+
+        return couponMapper.toInfoListFromCouponIssues(couponIssuesFromDb);
+    }
 }
