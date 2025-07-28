@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface CouponService {
 
-    CouponResponse.Issue issueCoupon(String userId);
+    CouponResponse.Issue issueCoupon(String userId, String couponId);
 
     List<CouponResponse.Info> getAll();
     List<CouponResponse.Info> getMyCoupons(String userId);
