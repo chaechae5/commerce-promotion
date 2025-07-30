@@ -184,6 +184,7 @@ public class CouponRedisService {
             log.info("Redis 롤백 완료. stockKey: {}, userCouponSetKey: {}, couponIssuedUserSetKey: {}, userId: {}, couponPublicId: {}", couponStockKey, userCouponSetKey, couponIssuedUserSetKey, userId, couponPublicId);
         } catch (Exception e) {
             log.error("Redis 롤백 실패. stockKey: {}, userCouponSetKey: {}, couponIssuedUserSetKey: {}, userId: {}, couponPublicId: {}", couponStockKey, userCouponSetKey, couponIssuedUserSetKey, userId, couponPublicId, e);
+            throw e;
         }
     }
 
