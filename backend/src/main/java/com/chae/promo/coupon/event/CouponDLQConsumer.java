@@ -22,7 +22,7 @@ public class CouponDLQConsumer {
      *
      * @param failedEvent 발급 실패 이벤트
      */
-    @KafkaListener(topics = CouponEventPublisher.COUPON_ISSUED_TOPIC + ".dlt", groupId = "coupon.dlt.group")
+    @KafkaListener(topics = TopicNames.COUPON_ISSUED + ".dlt", groupId = "coupon.dlt.group")
     public void handleIssuanceFailure(CouponIssuedEvent failedEvent) {
         log.error("쿠폰 발급 최종 실패! 보상 트랜잭션을 시작합니다. event: {}", failedEvent);
 

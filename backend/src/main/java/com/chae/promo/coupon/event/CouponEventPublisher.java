@@ -12,10 +12,8 @@ public class CouponEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public static final String COUPON_ISSUED_TOPIC = Topic.Names.COUPON_ISSUED;
-
     public void publishCouponIssued(CouponIssuedEvent event) {
-        kafkaTemplate.send(COUPON_ISSUED_TOPIC, event.getUserId(), event);
+        kafkaTemplate.send(TopicNames.COUPON_ISSUED, event.getUserId(), event);
         log.info("쿠폰 발급 이벤트 발행: {}", event);
     }
 }
