@@ -98,9 +98,7 @@ public class CouponServiceImpl implements CouponService {
                         .couponPublicId(coupon.getPublicId())
                         .expiredAt(calculatedExpireAt)
                         .issuedAt(now)
-                        .userCouponSetKey(userCouponSetKey)
-                        .couponStockKey(couponStockKey)
-                        .couponIssuedUserSetKey(couponIssuedUserSetKey)
+                        .couponCode(couponCode)
                         .build()
         );
 
