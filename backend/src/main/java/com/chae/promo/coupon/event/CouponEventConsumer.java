@@ -30,7 +30,7 @@ public class CouponEventConsumer {
             dltStrategy = DltStrategy.FAIL_ON_ERROR, // DLQ로 보내는 것조차 실패하면 에러를 남기고 중지
             autoCreateTopics = "false" // 자동으로 토픽을 생성하지 않음
     )
-    @KafkaListener(topics = CouponEventPublisher.COUPON_ISSUED_TOPIC, groupId = "coupon.group")
+    @KafkaListener(topics = TopicNames.COUPON_ISSUED, groupId = "coupon.group")
     public void handleCouponIssued(CouponIssuedEvent event) {
         log.info("쿠폰 발급 이벤트 수신: {}", event);
 
