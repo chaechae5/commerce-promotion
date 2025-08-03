@@ -45,7 +45,7 @@ public class CouponServiceImpl implements CouponService {
     public CouponResponse.Issue issueCoupon(String userId, String couponId) {
 
         // 쿠폰 id로 쿠폰 조회
-        Coupon coupon = findCouponByPublicId(couponId);
+        Coupon coupon = getCouponWithLogging(couponId);
         String couponCode = coupon.getCode();
 
         // Redis Key 생성
@@ -123,19 +123,15 @@ public class CouponServiceImpl implements CouponService {
         LocalDateTime now = LocalDateTime.now();
         return couponExpirationCalculator.calculateExpiration(coupon, now);
     }
-    /**
-     * 쿠폰 publicId로 쿠폰을 조회
-     * 쿠폰이 존재하지 않으면 예외를 발생
-     *
-     * @param publicId 쿠폰 publicId
-     * @return 쿠폰 엔티티
-     */
-    private Coupon findCouponByPublicId(String publicId) {
-        return couponRepository.findByPublicId(publicId)
-                .orElseThrow(() -> {
-                    log.warn("쿠폰 조회 실패 publicId: {}", publicId);
-                    return new CommonCustomException(CommonErrorCode.COUPON_NOT_FOUND);
-                });
+
+    // 쿠폰 publicId로 쿠폰 조회
+    private Coupon getCouponWithLogging(String publicId) {
+        try {
+            return couponRepository.getCouponByPublicIdOrThrow(publicId);
+        } catch (CommonCustomException e) {
+            log.warn("쿠폰 조회 실패 publicId: {}", publicId);
+            throw e;
+        }
     }
 
     /**
