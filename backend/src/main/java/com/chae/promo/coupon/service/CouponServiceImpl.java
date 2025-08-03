@@ -15,7 +15,6 @@ import com.chae.promo.coupon.service.redis.CouponRedisKeyManager;
 import com.chae.promo.coupon.service.redis.CouponRedisService;
 import com.chae.promo.coupon.util.CouponExpirationCalculator;
 import com.chae.promo.exception.CommonCustomException;
-import com.chae.promo.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -84,8 +83,8 @@ public class CouponServiceImpl implements CouponService {
             couponRedisService.issueCouponAtomically(couponRedisRequest);
         } catch (DataAccessException e) {
             //Redis 시스템 장애 처리 (연결 실패, 타입 불일치 등)
-            log.error("Redis 작업 중 시스템 예외 발생. userId: {}, couponCode: {}, couponPublicId: {}", userId, couponCode, couponId, e);
-            throw new CommonCustomException(CommonErrorCode.COUPON_ISSUE_DATA_ACCESS_FAIL);
+            log.error("Redis 작업 중 시스템 예외 발생. userId: {}, couponCode: {}, couponPublicId: {}", userId, couponCode, couponId);
+            throw new RuntimeException("Redis 장애로 쿠폰 발급 불가");
         }
 
         //쿠폰 publicId 생성 (uuid)
