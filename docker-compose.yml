@@ -18,6 +18,8 @@ services:
       redis-dev:
         condition: service_started
     restart: unless-stopped
+    profiles:
+      - dev
 
   db-dev:
     image: mysql:8.0
@@ -39,6 +41,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    profiles:
+      - dev
 
   redis-dev:
     image: redis:7.2-alpine
@@ -48,6 +52,8 @@ services:
       - "6379:6379"
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     restart: unless-stopped
+    profiles:
+      - dev
 
   
   kafka-dev:
@@ -69,6 +75,8 @@ services:
       KAFKA_LOG_DIRS: "/tmp/kraft-data"
     volumes:
       - kafka_kraft_data:/var/lib/kafka/data
+    profiles:
+      - dev
 
   
 
@@ -85,6 +93,8 @@ services:
       - db-prod
       - redis-prod
     restart: unless-stopped
+    profiles:
+      - prod
   
   db-prod:
     image: mysql:8.0
@@ -98,6 +108,8 @@ services:
       - prod-db-data:/var/lib/mysql
       - ./db/my.cnf:/etc/mysql/conf.d/my.cnf
     restart: unless-stopped
+    profiles:
+      - prod
 
   redis-prod:
     image: redis:7.2-alpine
@@ -105,6 +117,8 @@ services:
     env_file: .env.prod # prod 환경 변수 파일 사용
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     restart: unless-stopped
+    profiles:
+      - prod
 
   kafka-prod:
     image: confluentinc/cp-kafka:7.4.0
@@ -125,6 +139,8 @@ services:
       KAFKA_LOG_DIRS: "/tmp/kraft-data"
     volumes:
       - kafka_kraft_data:/var/lib/kafka/data
+    profiles:
+      - prod
   
 volumes:
   dev-db-data:

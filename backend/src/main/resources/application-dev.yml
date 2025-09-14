@@ -4,16 +4,16 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:promo_dev_db}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
-    username: ${DB_USER:promo_user}
-    password: ${DB_PASS:promo_pass}
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    username: ${DB_USER}
+    password: ${DB_PASS}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASS:redispass}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASS}
 
   jpa:
     hibernate:
@@ -28,7 +28,7 @@ spring:
     locations: classpath:db/migration,classpath:db/migration/seed
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -40,7 +40,7 @@ spring:
         spring.json.trusted.packages: "*" # 모든 패키지의 DTO를 신뢰하도록 설정
 
 jwt:
-  secret: ${JWT_SECRET:default-secret-key-dev-DN1575Rm9ySJWNEMj=}
+  secret: ${JWT_SECRET}
   accessTokenExpiration: 3600 # 1시간 (초)
   refreshTokenExpiration: 604800 # 7일 (초)
 
