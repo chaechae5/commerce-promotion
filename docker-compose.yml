@@ -18,6 +18,8 @@ services:
       redis-dev:
         condition: service_started
     restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
     profiles:
       - dev
 
