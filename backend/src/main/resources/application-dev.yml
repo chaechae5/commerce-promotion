@@ -8,6 +8,9 @@ spring:
     username: ${DB_USER}
     password: ${DB_PASS}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      leak-detection-threshold: 2000 # 2초
 
   data:
     redis:
