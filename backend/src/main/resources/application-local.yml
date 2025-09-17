@@ -55,3 +55,15 @@ logging:
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+app:
+  redis:
+    prefix: promo:local
+    use-hashtag: true # Redis 해시태그 사용 설정
+
+naverpay:
+  base-url: https://dev-pub.apis.naver.com
+  partner-id: naverpay-partner
+  client-id: ${NAVERPAY_CLIENT_ID}
+  client-secret: ${NAVERPAY_CLIENT_SECRET}
+

@@ -1,4 +1,4 @@
-package com.chae.promo.coupon.event;
+package com.chae.promo.common.kafka;
 
 /**
  * Kafka 토픽을 관리하는 Enum.
@@ -6,5 +6,7 @@ package com.chae.promo.coupon.event;
  */
 public final class TopicNames {
     public static final String COUPON_ISSUED = "coupon.issued";
+
+    public static final String ORDER_PLACED = "order.placed";
 
 }

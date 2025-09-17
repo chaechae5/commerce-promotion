@@ -48,3 +48,8 @@ logging:
   level:
     org.springframework.web: INFO
     org.hibernate.SQL: INFO
+
+app:
+  redis:
+    prefix: promo:prod
+    use-hashtag: true # Redis 해시태그 사용 설정
