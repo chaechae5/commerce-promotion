@@ -1,0 +1,13 @@
+-- 배송정보 테이블 추가
+
+CREATE TABLE shipping_info (
+   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+   order_id INT UNSIGNED NOT NULL UNIQUE COMMENT '주문 ID',
+   recipient_name VARCHAR(255) NOT NULL COMMENT '수령인 이름',
+   address VARCHAR(255) NOT NULL COMMENT '배송지 주소',
+   zipcode CHAR(5) NOT NULL COMMENT '우편번호',
+   phone_number VARCHAR(20) NOT NULL COMMENT '수령인 전화번호',
+   memo TEXT COMMENT '배송 메모',
+   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일자',
+   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일자'
+);

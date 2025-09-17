@@ -55,6 +55,16 @@ logging:
     com.chae.promo: INFO
     org.hibernate.SQL: OFF
     org.hibernate.type.descriptor.sql.BasicBinder: OFF
+    org.springframework.transaction: DEBUG # 트랜잭션 관련 로깅
+    org.springframework.orm.jpa.JpaTransactionManager: DEBUG # JPA 트랜잭션 관련 로깅
+    org.springframework.retry: DEBUG
+    org.apache.kafka: WARN
+    org.apache.kafka.clients: WARN
+    org.apache.kafka.clients.consumer: WARN
+    org.apache.kafka.common.utils.AppInfoParser: WARN
+    org.springframework.kafka: WARN
+    org.springframework.kafka.listener: WARN
+    org.springframework.kafka.core: WARN
 
 management:
   endpoints:
@@ -64,3 +74,15 @@ management:
   endpoint:
     health:
       show-details: always
+
+app:
+  redis:
+    prefix: promo:dev
+    use-hashtag: true # Redis 해시태그 사용 설정
+
+naverpay:
+  base-url: https://dev-pub.apis.naver.com
+  partner-id: naverpay-partner
+  client-id: ${NAVERPAY_CLIENT_ID}
+  client-secret: ${NAVERPAY_CLIENT_SECRET}
+

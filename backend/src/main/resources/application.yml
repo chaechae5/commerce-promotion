@@ -3,6 +3,8 @@ spring:
     name: promo
   profiles:
     active: local
+  main:
+    web-application-type: servlet # 웹 애플리케이션 타입 설정 (기본값: servlet)
 
   flyway:
     enabled: true  # Flyway 활성화 (기본값: true)

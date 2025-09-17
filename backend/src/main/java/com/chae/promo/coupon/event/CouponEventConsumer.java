@@ -1,5 +1,6 @@
 package com.chae.promo.coupon.event;
 
+import com.chae.promo.common.kafka.TopicNames;
 import com.chae.promo.coupon.service.CouponIssueHandlerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

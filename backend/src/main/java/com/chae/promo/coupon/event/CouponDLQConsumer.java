@@ -1,5 +1,6 @@
 package com.chae.promo.coupon.event;
 
+import com.chae.promo.common.kafka.TopicNames;
 import com.chae.promo.coupon.service.redis.CouponRedisKeyManager;
 import com.chae.promo.coupon.service.redis.CouponRedisService;
 import lombok.RequiredArgsConstructor;
