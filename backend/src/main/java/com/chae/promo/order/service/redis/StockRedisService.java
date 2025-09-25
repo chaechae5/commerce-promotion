@@ -4,6 +4,7 @@ import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -16,24 +17,16 @@ import java.util.List;
 @Validated
 public class StockRedisService {
     private final StringRedisTemplate stringRedisTemplate;
-    private final DefaultRedisScript<Long> reserveScript;
 
-    private final DefaultRedisScript<Long> confirmScript;
-
-    private final DefaultRedisScript<Long> cancelScript;
     private final StockRedisKeyManager key;
+    private final RedisScriptCatalog scripts;
 
-    public StockRedisService(
-            StringRedisTemplate stringRedisTemplate,
-            @Qualifier("reserveStockScript") DefaultRedisScript<Long> reserveScript,
-            @Qualifier("confirmStockScript") DefaultRedisScript<Long> confirmScript,
-            @Qualifier("cancelStockScript") DefaultRedisScript<Long> cancelScript,
-            StockRedisKeyManager key
-    ) {
+
+    public StockRedisService(StringRedisTemplate stringRedisTemplate,
+                             RedisScriptCatalog scripts,
+                             StockRedisKeyManager key) {
         this.stringRedisTemplate = stringRedisTemplate;
-        this.reserveScript = reserveScript;
-        this.confirmScript = confirmScript;
-        this.cancelScript = cancelScript;
+        this.scripts = scripts;
         this.key = key;
     }
 
@@ -45,7 +38,7 @@ public class StockRedisService {
         String kIndex = key.holdIndex(sku);
 
         Long result = stringRedisTemplate.execute(
-                reserveScript,
+                scripts.reserveStock(),
                 List.of(kAvail, kResv, kHold, kIndex),
                 String.valueOf(quantity),
                 String.valueOf(ttlSec),
@@ -91,7 +84,7 @@ public class StockRedisService {
         String kIndex = key.holdIndex(sku);
 
         Long result = stringRedisTemplate.execute(
-                confirmScript,
+                scripts.confirmStock(),
                 List.of(kAvail, kResv, kHold, kIndex)
         );
         if (result == null) {
@@ -127,7 +120,7 @@ public class StockRedisService {
         String kIndex = key.holdIndex(sku);
 
         Long result = stringRedisTemplate.execute(
-                cancelScript,
+                scripts.cancelStock(),
                 List.of(kResv, kHold, kIndex)
         );
 
