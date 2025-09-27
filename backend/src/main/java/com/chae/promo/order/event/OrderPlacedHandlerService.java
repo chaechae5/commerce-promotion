@@ -34,37 +34,60 @@ public class OrderPlacedHandlerService {
 
                 return; // 성공 시 메서드 종료
 
-            } catch (CommonCustomException e) {
-                log.warn("비즈니스 로직 검증 실패 - eventId: {}, error: {}", event.getEventId(), e.getMessage());
-                throw e; //재시도 제외 예외
-
-            } catch (DataIntegrityViolationException e) {
-                // 재시도할 필요 없는 예외는 DLT로 바로 전송
-                log.warn("Audit 저장 실패 (데이터 무결성 위반). eventId: {}, userId: {}, e: {}",
-                        event.getEventId(), event.getUserId(), e.getMessage());
-
-                throw new CommonCustomException(CommonErrorCode.PRODUCT_STOCK_AUDIT_SAVE_FAILED);
-
-            }  catch (OptimisticLockingFailureException e) {
-                log.warn("재고 업데이트 실패 - OptimisticLockException 발생. eventId: {}, userId: {}, attempt: {}/{}",
-                        event.getEventId(), event.getUserId(), attempt + 1, MAX_RETRIES);
-
-                if (attempt >= MAX_RETRIES -1) {
-                    handleFinalFailure(e, event);
-                }
-
-                applyBackoff(attempt);
-
-
             } catch (Exception e) {
-                log.error("DB 저장 실패로 인한 재처리 요청. eventId: {}, attempt: {}/{}", event.getEventId(), attempt + 1, MAX_RETRIES, e);
 
-                if (attempt >= MAX_RETRIES -1) {
-                    handleFinalFailure(e, event);
+                if (isNonRetryable(e)) {
+                    logNonRetryable(e, event);
+                    throw wrapIfNeeded(e, event); // 그대로 던져서 DLT로
                 }
 
-               applyBackoff(attempt);
+                log.warn("재시도 {}/{} - eventId: {}, userId: {}, error: {}",
+                        attempt + 1, MAX_RETRIES, event.getEventId(), event.getUserId(), e.getMessage());
+
+                logRetryable(e, event);
+
+                if (attempt >= MAX_RETRIES - 1) {
+                    handleFinalFailure(e, event); // 최대 재시도 초과
+                }
+
+                applyBackoff(attempt); // backoff 적용
+
             }
+        }
+    }
+
+    private boolean isNonRetryable(Exception e) {
+        return e instanceof CommonCustomException
+                || e instanceof DataIntegrityViolationException;
+    }
+
+    private RuntimeException wrapIfNeeded(Exception e, OrderPlacedEvent event) {
+        if (e instanceof CommonCustomException ce) {
+            log.warn("비즈니스 로직 검증 실패 - eventId: {}, error: {}", event.getEventId(), e.getMessage());
+
+            return ce;
+        }
+        if (e instanceof DataIntegrityViolationException) {
+
+            log.warn("Audit 저장 실패 (데이터 무결성 위반). eventId: {}, userId: {}, e: {}",
+                    event.getEventId(), event.getUserId(), e.getMessage());
+
+            return new CommonCustomException(CommonErrorCode.PRODUCT_STOCK_AUDIT_SAVE_FAILED);
+        }
+        return (e instanceof RuntimeException re) ? re : new RuntimeException(e);
+    }
+    private void logNonRetryable(Exception e, OrderPlacedEvent event){
+        log.warn("재시도 제외 예외 발생 - eventId: {}, error: {}", event.getEventId(), e.getMessage());
+    }
+
+    private void logRetryable(Exception e, OrderPlacedEvent event){
+        if( e instanceof OptimisticLockingFailureException){
+            log.warn("재고 업데이트 실패 - OptimisticLockException 발생. eventId: {}, userId: {}, error: {}",
+                    event.getEventId(), event.getUserId(), e.getMessage());
+
+        } else {
+            log.error("DB 저장 실패로 인한 재처리 요청. eventId: {}, userId: {}, error: {}",
+                    event.getEventId(), event.getUserId(), e.getMessage(), e);
         }
     }
 
