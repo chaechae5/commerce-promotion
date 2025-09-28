@@ -14,6 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+//외부 API 호출용 클라이언트
 @Service
 @RequiredArgsConstructor
 public class NaverPayClient {
