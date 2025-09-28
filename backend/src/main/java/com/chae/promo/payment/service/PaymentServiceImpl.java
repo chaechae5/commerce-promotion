@@ -1,41 +1,30 @@
 package com.chae.promo.payment.service;
 
-import com.chae.promo.common.kafka.TopicNames;
-import com.chae.promo.common.util.UuidUtil;
 import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
 import com.chae.promo.order.dto.OrderResponse;
 import com.chae.promo.order.entity.Order;
 import com.chae.promo.order.entity.OrderStatus;
 import com.chae.promo.order.entity.UserType;
-import com.chae.promo.order.event.OrderPlacedEvent;
 import com.chae.promo.order.repository.OrderRepository;
-import com.chae.promo.outbox.service.OutboxService;
 import com.chae.promo.payment.dto.*;
 import com.chae.promo.payment.entity.Payment;
-import com.chae.promo.payment.entity.PaymentMethod;
 import com.chae.promo.payment.entity.PaymentStatus;
-import com.chae.promo.payment.pg.NaverPayClient;
+import com.chae.promo.payment.pg.NaverPayService;
 import com.chae.promo.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.List;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
-    private final NaverPayClient naver;
+    private final NaverPayService naverPayService;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
-    private final OutboxService outboxService;
+    private final PaymentProcessor paymentProcessor;
 
 
     @Transactional
@@ -115,7 +104,6 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-    @Transactional
     @Override
     public ApproveResult approve(PaymentApprove request, String userId) {
         String paymentId = request.getPaymentId();
@@ -139,7 +127,8 @@ public class PaymentServiceImpl implements PaymentService {
             throw new CommonCustomException(CommonErrorCode.PAYMENT_NOT_ALLOWED_STATE);
         }
 
-        Payment payment = paymentRepository.findByOrderId(order.getId())
+        //결제 정보 검증
+        paymentRepository.findByOrderId(order.getId())
                 .orElseThrow(() -> {
                     log.warn("결제 정보가 존재하지 않습니다. 주문 ID: {}", order.getPublicId());
 
@@ -147,22 +136,9 @@ public class PaymentServiceImpl implements PaymentService {
                 });
 
         try {
-            //구현해두었지만 실제 API 호출은 하지 않음(테스트 편의를 위해)
-//            PaymentApprovalContext context = approveNaverPay(request, order);
+            PaymentApprovalContext context = naverPayService.approve(request, order);
 
-            //테스트를 위한 하드코딩
-            PaymentApprovalContext context = new PaymentApprovalContext(
-                    PaymentMethod.CARD,
-                    LocalDateTime.now()
-            );
-
-            // 도메인 상태 변경
-            payment.markPaid(request.getPaymentId(), context.paymentMethod(), context.paidAt());
-            order.markPaid();
-
-        enqueueOrderPlacedOutbox(order, userId, userType);
-
-            return new ApproveResult(paymentId, order.getTotalPrice());
+            return paymentProcessor.processApprovalResult(order.getPublicId(), paymentId, context, userId, userType);
 
         } catch (Exception e) {
             log.error("결제 승인 처리 중 오류 발생: {}", e.getMessage(), e);
@@ -171,78 +147,4 @@ public class PaymentServiceImpl implements PaymentService {
 
     }
 
-    private static LocalDateTime parseNaverYmdt(String ymdt) {
-        DateTimeFormatter NAVER_YMDT =
-                DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-
-        if (ymdt == null || ymdt.length() != 14 || !ymdt.chars().allMatch(Character::isDigit)) {
-            throw new IllegalArgumentException("Invalid ymdt: " + ymdt);
-        }
-        try {
-            return LocalDateTime.parse(ymdt, NAVER_YMDT);
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Failed to parse ymdt: " + ymdt, e);
-        }
-    }
-
-    // 결제 완료 후 처리 - outbox 저장
-    private void enqueueOrderPlacedOutbox(Order order, String userId, UserType userType) {
-        List<OrderPlacedEvent.Item> eventItems = order.getOrderItems().stream()
-                .map(item -> OrderPlacedEvent.Item.builder()
-                        .productCode(item.getProduct().getCode())
-                        .decreasedStock(item.getQuantity())
-                        .build())
-                .toList();
-
-        String eventId = UuidUtil.generate();
-
-        OrderPlacedEvent event = OrderPlacedEvent.builder()
-                .eventId(eventId)
-                .userId(userId)
-                .userType(userType)
-                .orderPublicId(order.getPublicId())
-                .items(eventItems)
-                .build();
-
-        outboxService.saveEvent(
-                eventId,
-                TopicNames.ORDER_PLACED,
-                order.getPublicId(),
-                event
-        );
-    }
-
-    private PaymentApprovalContext approveNaverPay(PaymentApprove request, Order order) {
-        NaverPayApproveResponse response = naver.approve(request.getPaymentId());
-
-        var detail = response.body().detail();
-
-        //승인 실패
-        if (!"SUCCESS".equalsIgnoreCase(detail.admissionState())) {
-            log.warn("결제 승인 실패: {}", detail.admissionState());
-            throw new CommonCustomException(
-                    CommonErrorCode.PAYMENT_APPROVAL_FAILED
-            );
-        }
-
-        // 금액 검증
-        BigDecimal paidAmount = BigDecimal.valueOf(detail.totalPayAmount()); //long -> BigDecimal
-        if (paidAmount.compareTo(order.getTotalPrice()) != 0) {
-            log.warn("결제 금액 불일치. 주문 금액 = {}, 결제 금액 = {}", order.getTotalPrice(), paidAmount);
-            throw new CommonCustomException(CommonErrorCode.PAYMENT_AMOUNT_MISMATCH);
-        }
-
-        // 주문 ID 검증
-        if (!request.getOrderId().equals(detail.merchantPayKey())) {
-            throw new CommonCustomException(
-                    CommonErrorCode.PAYMENT_ORDER_MISMATCH
-            );
-        }
-
-        PaymentMethod paymentMethod = PaymentMethod.fromValue(detail.primaryPayMeans());
-        LocalDateTime paidAt = parseNaverYmdt(detail.admissionYmdt());
-
-
-        return new PaymentApprovalContext(paymentMethod, paidAt);
-    }
 }
