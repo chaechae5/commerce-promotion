@@ -81,8 +81,9 @@ app:
     use-hashtag: true # Redis 해시태그 사용 설정
 
 naverpay:
-  base-url: https://dev-pub.apis.naver.com
-  partner-id: naverpay-partner
+  base-url: https://dev-pay.paygate.naver.com
+  partner-id: ${NAVERPAY_PARTNER_ID}
   client-id: ${NAVERPAY_CLIENT_ID}
   client-secret: ${NAVERPAY_CLIENT_SECRET}
+  chain-id: ${NAVERPAY_CHAIN_ID}
 

@@ -22,11 +22,14 @@ public class NaverPayClient {
     @Value("${naverpay.partner-id}") String partnerId;
     @Value("${naverpay.client-id}") String clientId;
     @Value("${naverpay.client-secret}") String clientSecret;
+    @Value("${naverpay.chain-id}") String chainId;
+
 
     private Consumer<HttpHeaders> auth(String idem) {
         return h -> {
             h.add("X-Naver-Client-Id", clientId);
             h.add("X-Naver-Client-Secret", clientSecret);
+            h.add("X-NaverPay-Chain-Id", chainId);
             h.add("X-NaverPay-Idempotency-Key", idem); // 멱등키 권장
         };
     }
