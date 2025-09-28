@@ -42,7 +42,6 @@ public class NaverPayService {
 
             log.warn("결제 금액 불일치. 주문 금액 = {}, 결제 금액 = {}", order.getTotalPrice(), paidAmount);
 
-//            throw new CommonCustomException(CommonErrorCode.PAYMENT_AMOUNT_MISMATCH);
         }
 
         // 주문 ID 검증
@@ -51,7 +50,6 @@ public class NaverPayService {
             integrityFailed = true;
             log.warn("결제 주문 ID 불일치. 요청 주문 ID = {}, 결제 주문 ID = {}",
                     request.getOrderId(), detail.merchantPayKey());
-//            throw new CommonCustomException(CommonErrorCode.PAYMENT_ORDER_MISMATCH);
         }
 
         PaymentMethod method = PaymentMethod.fromValue(detail.primaryPayMeans());
