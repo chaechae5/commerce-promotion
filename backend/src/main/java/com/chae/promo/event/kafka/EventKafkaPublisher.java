@@ -1,5 +1,6 @@
 package com.chae.promo.event.kafka;
 
+import com.chae.promo.common.kafka.TopicNames;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -13,7 +14,7 @@ public class EventKafkaPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
 
     public void publishEventOpen(String eventId) {
-        kafkaTemplate.send("EVENT_OPEN", eventId, "OPEN");
+        kafkaTemplate.send(TopicNames.EVENT_OPEN, eventId, "OPEN");
         log.info("Kafka EVENT_OPEN 발행됨 (eventId={})", eventId);
     }
 }

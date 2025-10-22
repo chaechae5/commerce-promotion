@@ -12,4 +12,6 @@ public final class TopicNames {
     public static final String PAYMENT_FAILED = "payment.failed"; //결제 승인 실패
 
 
+    public static final String EVENT_OPEN = "event.open";
+
 }
