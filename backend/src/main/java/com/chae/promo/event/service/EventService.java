@@ -7,4 +7,5 @@ public interface EventService {
     void markEventAsOpened(String eventId);
     boolean isAlreadyOpened(String eventId);
     List<String> getExpiredPendingEvents();
+    void removeFromSchedule(String eventId);
 }
