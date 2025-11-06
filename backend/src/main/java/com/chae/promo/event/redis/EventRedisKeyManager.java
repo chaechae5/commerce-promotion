@@ -24,6 +24,8 @@ public class EventRedisKeyManager {
     private static final String EVENT_START_FLAG_KEY_FORMAT = "{%s}:start_flag"; // %s = eventId
     private static final String EVENT_STATUS_KEY_FORMAT = "{%s}:status"; // %s = eventId
     private static final String EVENT_SCHEDULE_KEY_SUFFIX = "schedule";
+    private static final String EVENT_LOCK_KEY_FORMAT = "lock:{%s}"; // %s = eventId
+
 
     /** 이벤트 시작 플래그 키 생성
      * @param eventId 이벤트 ID
@@ -48,6 +50,16 @@ public class EventRedisKeyManager {
      */
     public String getEventScheduleKey() {
         return buildKey(EVENT_SCHEDULE_KEY_SUFFIX);
+    }
+
+
+    /** 이벤트 락 키 생성
+     * @param eventId 이벤트 ID
+     * @return Redis 이벤트 락 Key
+     */
+    public String getEventLockKey(String eventId) {
+        validateEventId(eventId);
+        return buildKey(String.format(EVENT_LOCK_KEY_FORMAT, eventId));
     }
 
     /**

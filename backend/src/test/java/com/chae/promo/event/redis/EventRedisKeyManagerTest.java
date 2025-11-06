@@ -150,4 +150,12 @@ class EventRedisKeyManagerTest {
         EventRedisKeyManager noPrefixManager = new EventRedisKeyManager("");
         assertThat(noPrefixManager.isEventStartFlagKey("event:{E1001}:start_flag")).isTrue();
     }
+
+    @Test
+    @DisplayName("이벤트 락 키 생성이 올바르게 동작해야 한다")
+    void testGetEventLockKey() {
+        EventRedisKeyManager keyManager = new EventRedisKeyManager("dev:");
+        String key = keyManager.getEventLockKey("E123");
+        assertThat(key).isEqualTo("dev:event:lock:{E123}");
+    }
 }
