@@ -41,6 +41,8 @@ public enum CommonErrorCode {
     DUPLICATED_PAYMENT_METHOD(HttpStatus.NOT_FOUND, "DUPLICATED_PAYMENT_METHOD", "중복된 결제 수단이 포함되어 있습니다."),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "결제 정보를 찾을 수 없습니다."),
 
+    //이벤트
+    INVALID_EVENT_ID(HttpStatus.BAD_REQUEST, "INVALID_EVENT_ID", "유효하지 않은 이벤트 ID입니다."),
 
     //redis
     REDIS_OPERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "REDIS_OPERATION_FAILED", "Redis 작업 중 오류가 발생했습니다."),
