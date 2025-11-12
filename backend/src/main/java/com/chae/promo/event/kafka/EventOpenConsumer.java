@@ -17,7 +17,12 @@ public class EventOpenConsumer {
 
     @KafkaListener(topics = TopicNames.EVENT_OPEN, groupId = "event.group")
     public void onEventOpen(String eventId) {
-        log.info("EVENT_OPEN 수신됨: eventId={}", eventId);
-        emitterManager.sendToAll(EVENT_OPEN, eventId);
+        try{
+            log.info("EVENT_OPEN 수신됨: eventId={}", eventId);
+            emitterManager.sendToAll(EVENT_OPEN, eventId);
+        }catch (Exception e){
+            log.error("SSE 전송 중 오류 발생: {}", e.getMessage(), e);
+        }
+
     }
 }
