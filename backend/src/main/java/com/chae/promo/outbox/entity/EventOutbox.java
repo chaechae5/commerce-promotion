@@ -4,6 +4,8 @@ import com.chae.promo.common.entity.BaseTime;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Entity
@@ -53,5 +55,27 @@ public class EventOutbox extends BaseTime {
     @Column(length = 512)
     private String lastError;
 
+    /**
+     * outbox 상태를 SENT로 변경
+     * @param clock
+     */
+    public void markSent(Clock clock) {
+        this.status = Status.SENT;
+        this.retryCount = 0;
+        this.lastError = null;
+        this.nextRetryAt = LocalDateTime.now(clock);
+    }
+
+    /**
+     * outbox 상태를 FAILED로 변경
+     * @param clock
+     * @param ex
+     */
+    public void markFailed(int retryCount, Clock clock, Exception ex, Duration backoffDuration) {
+        this.status = Status.FAILED;
+        this.retryCount = retryCount;
+        this.lastError = ex.getClass().getSimpleName() + ":" + ex.getMessage();
+        this.nextRetryAt = LocalDateTime.now(clock).plus(backoffDuration);
+    }
 
 }
