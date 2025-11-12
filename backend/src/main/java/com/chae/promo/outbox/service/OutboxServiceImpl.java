@@ -41,4 +41,8 @@ public class OutboxServiceImpl implements OutboxService {
         }
     }
 
+    @Override
+    public boolean existsByTypeAndAggregateId(String type, String aggregateId) {
+        return eventOutboxRepository.existsByTypeAndAggregateId(type, aggregateId);
+    }
 }

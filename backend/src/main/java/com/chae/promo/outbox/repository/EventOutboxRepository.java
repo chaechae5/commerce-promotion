@@ -19,4 +19,6 @@ public interface EventOutboxRepository extends JpaRepository<EventOutbox, Long> 
         """, nativeQuery = true)
     List<EventOutbox> lockAndFetch(@Param("now") LocalDateTime now,
                                    @Param("limit") int limit);
+
+    boolean existsByTypeAndAggregateId(String type, String aggregateId);
 }
