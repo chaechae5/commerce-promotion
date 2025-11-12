@@ -1,6 +1,5 @@
 package com.chae.promo.event.redis;
 
-import com.chae.promo.event.kafka.EventKafkaPublisher;
 import com.chae.promo.event.service.EventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +13,6 @@ import java.time.Duration;
 @RequiredArgsConstructor
 @Slf4j
 public class RedisKeyExpirationListener implements MessageListener {
-
-    private final EventKafkaPublisher eventKafkaPublisher;
     private final EventService eventService;
 
     private final EventRedisKeyManager keyManager;
@@ -56,8 +53,6 @@ public class RedisKeyExpirationListener implements MessageListener {
     private void handleEventStart(String eventId) {
         log.info("Redis TTL 만료 감지됨: eventId={}", eventId);
         eventService.markEventAsOpened(eventId);
-        eventKafkaPublisher.publishEventOpen(eventId);
-
         eventService.removeFromSchedule(eventId);
     }
 

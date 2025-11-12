@@ -66,7 +66,6 @@ public class RedisKeyExpirationListenerTest {
 
         //호출되지 않음 - 특정 메서드가 호출되지 않았음을 검증
         verify(eventService, never()).markEventAsOpened(any());
-        verify(eventKafkaPublisher, never()).publishEventOpen(any());
     }
 
     @Test
@@ -83,7 +82,6 @@ public class RedisKeyExpirationListenerTest {
 
         verify(eventService).releaseEventLock("E123"); // 락은 항상 해제되어야 함
         verify(eventService, never()).markEventAsOpened(any());
-        verify(eventKafkaPublisher, never()).publishEventOpen(any());
     }
 
     @Test
@@ -101,7 +99,6 @@ public class RedisKeyExpirationListenerTest {
         //호출 순서 검증
         InOrder inOrder = inOrder(eventService, eventKafkaPublisher);
         inOrder.verify(eventService).markEventAsOpened("E123");
-        inOrder.verify(eventKafkaPublisher).publishEventOpen("E123");
         inOrder.verify(eventService).removeFromSchedule("E123");
 
         //락 해제 보장
