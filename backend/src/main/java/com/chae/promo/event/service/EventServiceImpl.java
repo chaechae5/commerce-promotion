@@ -142,4 +142,25 @@ public class EventServiceImpl implements EventService{
         }
     }
 
+    @Override
+    public boolean acquireEventLock(String eventId, Duration timeout) {
+        try {
+            String lockKey = keyManager.getEventLockKey(eventId);
+            return Boolean.TRUE.equals(
+                    redisTemplate.opsForValue().setIfAbsent(lockKey, "1", timeout)
+            );
+        } catch (RedisSystemException e) {
+            log.error("Redis 락 획득 실패: eventId={}", eventId, e);
+            throw new CommonCustomException(CommonErrorCode.REDIS_OPERATION_FAILED);
+        }    }
+
+    @Override
+    public void releaseEventLock(String eventId) {
+        try {
+            String lockKey = keyManager.getEventLockKey(eventId);
+            redisTemplate.delete(lockKey);
+        } catch (Exception e) {
+            log.warn("락 해제 실패: eventId={}, cause={}", eventId, e.getMessage());
+        }
+    }
 }

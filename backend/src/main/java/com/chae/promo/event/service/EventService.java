@@ -1,5 +1,6 @@
 package com.chae.promo.event.service;
 
+import java.time.Duration;
 import java.util.List;
 
 public interface EventService {
@@ -8,4 +9,6 @@ public interface EventService {
     boolean isAlreadyOpened(String eventId);
     List<String> getExpiredPendingEvents();
     void removeFromSchedule(String eventId);
+    boolean acquireEventLock(String eventId, Duration timeout);
+    void releaseEventLock(String eventId);
 }
