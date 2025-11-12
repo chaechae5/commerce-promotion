@@ -1,9 +1,14 @@
 package com.chae.promo.event.service;
 
+import com.chae.promo.common.kafka.TopicNames;
+import com.chae.promo.common.util.UuidUtil;
+import com.chae.promo.event.domain.EventOpenPayload;
 import com.chae.promo.event.redis.EventRedisRepository;
+import com.chae.promo.outbox.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
@@ -14,6 +19,7 @@ import java.util.List;
 public class EventServiceImpl implements EventService {
 
     private final EventRedisRepository redisRepository;
+    private final OutboxService outboxService;
 
     @Override
     public void scheduleEvent(String eventId, long delaySeconds) {
@@ -28,8 +34,30 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
+    @Transactional
     public void markEventAsOpened(String eventId) {
-        redisRepository.markAsOpen(eventId);
+        try{
+            redisRepository.markAsOpen(eventId);
+        }catch (Exception e) {
+            log.error("이벤트 오픈 중 오류 발생: eventId={}", eventId, e);
+        }
+
+        // 중복 처리 방지
+        if(outboxService.existsByTypeAndAggregateId(TopicNames.EVENT_OPEN, eventId)) {
+            log.info("이벤트 오픈 이미 처리됨: eventId={}", eventId);
+            return;
+        }
+
+        String outboxEventId = UuidUtil.generate();
+
+        EventOpenPayload payload = EventOpenPayload.builder()
+                .outboxEventId(outboxEventId)
+                .eventDomainId(eventId)
+                .status("EVENT_OPEN")
+                .build();
+
+        outboxService.saveEvent(outboxEventId, TopicNames.EVENT_OPEN, eventId, payload);
+
         log.info("이벤트 오픈 상태로 갱신됨: eventId={}", eventId);
     }
 
