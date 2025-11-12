@@ -13,8 +13,13 @@ public class EventKafkaPublisher {
 
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public void publishEventOpen(String eventId) {
-        kafkaTemplate.send(TopicNames.EVENT_OPEN, eventId, "OPEN");
-        log.info("Kafka EVENT_OPEN 발행됨 (eventId={})", eventId);
+    /**
+     * 이벤트 오픈 이벤트 발행
+     * @param outboxEventId outbox 이벤트 ID
+     * @param eventDomainId 도메인 이벤트 ID
+     */
+    public void publishEventOpen(String outboxEventId, String eventDomainId) {
+        kafkaTemplate.send(TopicNames.EVENT_OPEN, outboxEventId, eventDomainId);
+        log.info("Kafka EVENT_OPEN 발행됨 (outboxEventId={}, eventDomainId={})", outboxEventId, eventDomainId);
     }
 }
