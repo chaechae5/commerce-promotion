@@ -1,17 +1,13 @@
 package com.chae.promo.outbox;
 
-import com.chae.promo.order.entity.UserType;
-import com.chae.promo.order.event.OrderPlacedEvent;
-import com.chae.promo.order.event.OrderPlacedEventPublisher;
 import com.chae.promo.outbox.entity.EventOutbox;
 import com.chae.promo.outbox.repository.EventOutboxRepository;
+import com.chae.promo.outbox.service.DomainOutboxPublisher;
 import com.chae.promo.outbox.service.OutboxWorker;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -24,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,9 +29,10 @@ public class OutboxWorkerUnitTest {
     private EventOutboxRepository eventOutboxRepository;
 
     @Mock
-    private OrderPlacedEventPublisher orderPlacedEventPublisher;
+    private DomainOutboxPublisher orderPlacedPublisher;
 
-    private ObjectMapper objectMapper;
+    @Mock
+    private DomainOutboxPublisher eventOpenPublisher;
 
     @Mock
     private Clock clock;
@@ -43,53 +41,53 @@ public class OutboxWorkerUnitTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
-        outboxWorker = new OutboxWorker(eventOutboxRepository, objectMapper, orderPlacedEventPublisher, clock);
+        clock = Clock.systemUTC();
+        List<DomainOutboxPublisher> publishers = List.of(orderPlacedPublisher, eventOpenPublisher);
+        outboxWorker = new OutboxWorker(eventOutboxRepository, clock, publishers);
     }
 
-    @Test
-    @DisplayName("publishBatch() 호출 시 PENDING 이벤트를 발행")
-    void publishBatch_readsPendingOutbox_andPublishesEvent() {
-        String payload = """
-        {
-          "items": [
-            { "productCode": "P00000001", "decreasedStock": 1 }
-          ],
-          "userId": "test-aggregate-id",
-          "eventId": "test-event-id",
-          "userType": "GUEST",
-          "orderPublicId": "test-order-id"
-        }
-        """;
 
+    @Test
+    @DisplayName("supports() 결과에 따라 올바른 퍼블리셔만 호출된다")
+    void publishBatch_routesToCorrectPublisherBasedOnType() throws Exception {
         // given
-        EventOutbox outbox = EventOutbox.builder()
-                .eventId("test-event-id")
-                .aggregateId("test-aggregate-id")
+        EventOutbox orderPlacedOutbox = EventOutbox.builder()
+                .eventId("order-placed-event-id")
+                .aggregateId("agg-1")
                 .type("order.placed")
                 .status(EventOutbox.Status.PENDING)
-                .payloadJson(payload)
+                .payloadJson("{}")
+                .build();
+
+        EventOutbox eventOpenOutbox = EventOutbox.builder()
+                .eventId("event-open-event-id")
+                .aggregateId("agg-2")
+                .type("event.open")
+                .status(EventOutbox.Status.PENDING)
+                .payloadJson("{}")
                 .build();
 
         given(eventOutboxRepository.lockAndFetch(any(LocalDateTime.class), anyInt()))
-                .willReturn(List.of(outbox));
+                .willReturn(List.of(orderPlacedOutbox, eventOpenOutbox));
 
+        // supports 매칭
+        given(orderPlacedPublisher.supports("order.placed")).willReturn(true);
+        given(orderPlacedPublisher.supports("event.open")).willReturn(false);
+
+        given(eventOpenPublisher.supports("event.open")).willReturn(true);
 
         // when
         outboxWorker.publishBatch();
 
-        //then
-        ArgumentCaptor<OrderPlacedEvent> captor = ArgumentCaptor.forClass(OrderPlacedEvent.class);
+        // then
+        then(orderPlacedPublisher).should(times(1)).publish("{}");
+        then(eventOpenPublisher).should(times(1)).publish("{}");
 
-        then(orderPlacedEventPublisher).should(times(1))
-                .publishOrderPlacedSync(captor.capture());
+        // 반대로 호출되지 않았는지도 확인
+        then(orderPlacedPublisher).should(never()).publish("{\"wrong\":\"eventOpen\"}");
+        then(eventOpenPublisher).should(never()).publish("{\"wrong\":\"orderPlaced\"}");
 
-        OrderPlacedEvent published = captor.getValue();
-
-        assertThat(published.getItems().get(0).getProductCode()).isEqualTo("P00000001");
-        assertThat(published.getUserType()).isEqualTo(UserType.GUEST);
-        assertThat(published.getOrderPublicId()).isEqualTo("test-order-id");
-        assertThat(outbox.getStatus()).isEqualTo(EventOutbox.Status.SENT);
-
+        assertThat(orderPlacedOutbox.getStatus()).isEqualTo(EventOutbox.Status.SENT);
+        assertThat(eventOpenOutbox.getStatus()).isEqualTo(EventOutbox.Status.SENT);
     }
 }
