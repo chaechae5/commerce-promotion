@@ -2,6 +2,7 @@ package com.chae.promo.security;
 
 import com.chae.promo.auth.domain.AuthProviderType;
 import com.chae.promo.exception.AuthException;
+import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
