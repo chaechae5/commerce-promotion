@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
+import static com.chae.promo.auth.domain.AuthProviderType.ANONYMOUS;
+
 /**
  * 토큰 생성, 서명, 파싱, 검증만 담당
  */
@@ -56,8 +58,8 @@ public class JwtUtil {
     //토큰생성 로직
     private String createToken(String principalId, AuthProviderType authProviderType, long expirySeconds, String tokenType) {
         return Jwts.builder()
-                .setSubject(authProviderType.getValue())
-                .claim("principalId", principalId)
+                .setSubject(principalId)
+                .claim("provider", authProviderType.getValue())
                 .claim("tokenType", tokenType)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirySeconds * 1000L))
@@ -99,7 +101,7 @@ public class JwtUtil {
                     .parseClaimsJws(token)
                     .getBody();
 
-            if (!"anonymous".equals(claims.getSubject())) {
+            if (!ANONYMOUS.getValue().equals(claims.get("provider", String.class))) {
                 throw new CommonCustomException(CommonErrorCode.JWT_INVALID);
             }
 
