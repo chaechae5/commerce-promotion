@@ -4,9 +4,9 @@ import com.chae.promo.auth.domain.AuthProviderType;
 import com.chae.promo.auth.dto.TokenResponse;
 import com.chae.promo.auth.dto.TokenValidationResponse;
 import com.chae.promo.exception.AuthException;
-import com.chae.promo.security.JwtUtil;
 import com.chae.promo.exception.CommonCustomException;
 import com.chae.promo.exception.CommonErrorCode;
+import com.chae.promo.security.JwtUtil;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,11 +48,6 @@ public class AuthServiceImpl implements AuthService {
     public TokenValidationResponse validateAndExtractToken(String token) {
         String cleanToken = extractTokenFromBearer(token);
         Claims claims = jwtUtil.validateToken(cleanToken);
-
-        // 토큰 타입이 'refresh'가 맞는지 확인
-        if (!"refresh".equals(claims.get("tokenType", String.class))) {
-            throw new AuthException(CommonErrorCode.INVALID_REFRESH_TOKEN);
-        }
 
         String principalId = extractPrincipalId(claims, CommonErrorCode.JWT_INVALID);
         AuthProviderType authProviderType = getAuthProviderTypeFromClaims(claims);
@@ -127,12 +122,12 @@ public class AuthServiceImpl implements AuthService {
 
 
     private AuthProviderType getAuthProviderTypeFromClaims(Claims claims) {
-        String subjectString = claims.getSubject();
+        String subjectString = claims.get("provider", String.class);
         return AuthProviderType.fromValue(subjectString);
     }
 
     private String extractPrincipalId(Claims claims, CommonErrorCode errorCodeIfMissing) {
-        String principalId = claims.get("principalId", String.class);
+        String principalId = claims.getSubject();
         if (principalId == null || principalId.isBlank()) {
             log.warn("principalId 클레임 누락");
             throw new CommonCustomException(errorCodeIfMissing);

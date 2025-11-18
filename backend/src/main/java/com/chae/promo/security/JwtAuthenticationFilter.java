@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 유효성 검증 & 정보 가져오기
             //todo. user table 설계 후 해당 로직 수정
             Claims claims = jwtUtil.validateToken(token);
-            AuthProviderType authProviderType = AuthProviderType.fromValue(claims.getSubject());
+            AuthProviderType authProviderType = AuthProviderType.fromValue(claims.get("provider", String.class));
             String userId = authProviderType.getResolver().resolve(claims);
 
             // DB 조회 없이, 클레임 정보로 UserDetails 객체를 생성
