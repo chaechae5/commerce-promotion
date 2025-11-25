@@ -50,7 +50,7 @@ graph LR
     subgraph MSG[Messaging Layer]
         Outbox[(Outbox Table)]:::msg
         Worker[Outbox Worker]:::msg
-        Kafka[(Kafka Cluster)]:::msg
+        Kafka[(Kafka)]:::msg
         Outbox --> Worker --> Kafka
     end
 
