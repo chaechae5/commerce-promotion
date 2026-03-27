@@ -132,7 +132,7 @@ public class CouponRedisServiceTest {
         // When & Then
         assertThatThrownBy(() -> couponRedisService.issueCouponAtomically(request))
                 .isInstanceOf(CommonCustomException.class)
-                .hasMessageContaining(CommonErrorCode.COUPON_SOLD_OUT.getMessage());
+                .hasMessageContaining(CommonErrorCode.COUPON_SOLD_OUT.getCode());
 
     }
 
@@ -150,7 +150,7 @@ public class CouponRedisServiceTest {
         // When & Then
         assertThatThrownBy(() -> couponRedisService.issueCouponAtomically(request))
                 .isInstanceOf(CommonCustomException.class)
-                .hasMessageContaining(CommonErrorCode.COUPON_ALREADY_ISSUED.getMessage());
+                .hasMessageContaining(CommonErrorCode.COUPON_ALREADY_ISSUED.getCode());
 
     }
 
@@ -168,7 +168,7 @@ public class CouponRedisServiceTest {
         // When & Then
         assertThatThrownBy(() -> couponRedisService.issueCouponAtomically(request))
                 .isInstanceOf(CommonCustomException.class)
-                .hasMessageContaining(CommonErrorCode.COUPON_EXPIRED.getMessage());
+                .hasMessageContaining(CommonErrorCode.COUPON_EXPIRED.getCode());
 
     }
 

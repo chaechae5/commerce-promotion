@@ -1,0 +1,60 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+
+  datasource:
+    url: jdbc:h2:mem:promo_test_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL;NON_KEYWORDS=VALUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASS:redispass}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: coupon-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+jwt:
+  secret: ${JWT_SECRET:test-secret-key-for-testing-only-12345678}
+  accessTokenExpiration: 86400
+  refreshTokenExpiration: 1209600
+
+app:
+  redis:
+    prefix: promo:test
+    use-hashtag: true
+
+naverpay:
+  base-url: https://dev-pub.apis.naver.com
+  partner-id: naverpay-partner
+  client-id: ${NAVERPAY_CLIENT_ID:test-client-id}
+  client-secret: ${NAVERPAY_CLIENT_SECRET:test-client-secret}
+  chain-id: ${NAVERPAY_CHAIN_ID:test-chain-id}

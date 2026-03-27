@@ -36,7 +36,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
 @SpringBootTest
-@ActiveProfiles("dev")
+@ActiveProfiles("test")
 public class PlaceOrderServiceTest {
 
     @Autowired
@@ -116,17 +116,8 @@ public class PlaceOrderServiceTest {
         then(stockRedisService).should(times(1))
                 .reserve(eq("P-200"), anyString(), eq(3L), eq(TTL));
 
-        // 3) Outbox 저장 검증
-        ArgumentCaptor<EventOutbox> outboxCaptor = ArgumentCaptor.forClass(EventOutbox.class);
-        then(eventOutboxRepository).should(times(1)).save(outboxCaptor.capture());
-
-        EventOutbox saved = outboxCaptor.getValue();
-        then(eventOutboxRepository).should(times(1)).save(outboxCaptor.capture());
-
-        assertThat(saved.getType()).isEqualTo("order.placed");
-        assertThat(saved.getStatus()).isEqualTo(EventOutbox.Status.PENDING);
-        assertThat(saved.getPayloadJson()).contains("P-100");
-        assertThat(saved.getPayloadJson()).contains("P-200");
+        // 3) Outbox 저장 없음: placeOrder는 현재 OutboxService를 호출하지 않음
+        then(eventOutboxRepository).should(never()).save(any());
 
     }
 
@@ -147,10 +138,6 @@ public class PlaceOrderServiceTest {
         // save는 정상
         given(orderRepository.save(any(Order.class))).willAnswer(inv -> inv.getArgument(0));
 
-        // Outbox save도 정상 동작 (rollback 대상)
-        given(eventOutboxRepository.save(any(EventOutbox.class)))
-                .willAnswer(inv -> inv.getArgument(0));
-
         // 여기서 핵심: 트랜잭션 동기화 등록(코드상 reserve → registerSynchronization) 이후에
         // 예외가 터져야 롤백 콜백이 실행됨. 따라서 mapper에서 런타임 예외를 던지게 해서 롤백 유도.
         given(orderMapper.toPurchaseResponse(any(Order.class)))
@@ -167,8 +154,8 @@ public class PlaceOrderServiceTest {
         then(stockRedisService).should(times(1))
                 .reserve(eq("P-400"), anyString(), eq(1L), anyLong());
 
-        // Outbox 저장은 시도되었음
-        then(eventOutboxRepository).should(times(1)).save(any(EventOutbox.class));
+        // placeOrder는 OutboxService를 호출하지 않음
+        then(eventOutboxRepository).should(never()).save(any(EventOutbox.class));
 
         // 롤백 후 afterCompletion(status=ROLLED_BACK)에서 cancel()이 호출되어야 함
         // → placeOrder 호출이 예외로 끝난 뒤 검증해야 취소 콜백까지 처리 완료
