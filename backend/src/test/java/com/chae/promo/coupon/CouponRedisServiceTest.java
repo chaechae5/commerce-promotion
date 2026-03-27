@@ -84,16 +84,16 @@ public class CouponRedisServiceTest {
     @Test
     @DisplayName("쿠폰 발급 성공 테스트")
     void issueCouponAtomically_success() {
+        // given
         String userId = TEST_USER_ID_PREFIX + "1";
         CouponRedisRequest request = createCouponRedisRequest(userId);
-
-        // 쿠폰 발급 시도
         when(stringRedisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(String.class), any(String.class), any(String.class)))
                 .thenReturn(1L);
 
+        // when
         couponRedisService.issueCouponAtomically(request);
 
-        //then
+        // then
         // Redis 스크립트 실행이 성공적으로 호출되었는지 검증
         verify(stringRedisTemplate, times(1)).execute(any(DefaultRedisScript.class), anyList(), any(String.class), any(String.class), any(String.class));
 

@@ -24,6 +24,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
+@DisplayName("Outbox 워커 단위 테스트")
 public class OutboxWorkerUnitTest {
     @Mock
     private EventOutboxRepository eventOutboxRepository;

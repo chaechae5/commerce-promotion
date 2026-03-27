@@ -145,17 +145,6 @@ For every untested function or method, produce tests covering:
 
 ---
 
-## Test Coverage Requirements
-
-For every untested method, produce tests covering:
-- Happy path: 정상 입력에 대한 기대 결과
-- Edge cases: null, 빈 컬렉션, 0, 경계값
-- Error handling: 예외 발생, 잘못된 입력, 외부 의존성 실패
-- State transitions: 메서드 호출 전후 상태 검증 (특히 결제/정산 상태 enum)
-- Concurrency: 동시성 이슈가 있는 로직 (재고, 쿠폰 발급)
-
----
-
 ## Mocking Strategy
 
 - **항상 mock할 대상**: Repository, KafkaTemplate, RedisTemplate, RestTemplate/WebClient, ApplicationEventPublisher, Clock/LocalDateTime

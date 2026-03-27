@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+@DisplayName("Redis 키 만료 이벤트 리스너 단위 테스트")
 @ExtendWith(MockitoExtension.class)
 public class RedisKeyExpirationListenerTest {
     @Mock
@@ -42,13 +43,14 @@ public class RedisKeyExpirationListenerTest {
     @Test
     @DisplayName("이벤트 start_flag 형식이 아닌 키는 무시되어야 한다")
     void testIgnoreNonEventKey() {
+        // given
         Message message = message("other:123:expired");
-
         when(keyManager.isEventStartFlagKey("other:123:expired")).thenReturn(false);
 
+        // when
         listener.onMessage(message, null);
 
-        //아무 동작도 수행되지 않아야 함 - mock의 어떤 메서드도 호출되지 않았음을 검증
+        // then
         verifyNoInteractions(eventService);
         verifyNoInteractions(eventKafkaPublisher);
     }
@@ -56,30 +58,33 @@ public class RedisKeyExpirationListenerTest {
     @Test
     @DisplayName("락 획득 실패 시 이벤트 처리 스킵")
     void testLockAcquireFails() {
+        // given
         Message message = message("event:{E123}:start_flag");
-
         when(keyManager.isEventStartFlagKey(anyString())).thenReturn(true);
         when(keyManager.extractEventId(anyString())).thenReturn("E123");
         when(eventService.acquireEventLock(eq("E123"), any())).thenReturn(false);
 
+        // when
         listener.onMessage(message, null);
 
-        //호출되지 않음 - 특정 메서드가 호출되지 않았음을 검증
+        // then
         verify(eventService, never()).markEventAsOpened(any());
     }
 
     @Test
     @DisplayName("이미 OPEN 상태이면 이벤트 처리 스킵")
     void testAlreadyOpened() {
+        // given
         Message message = message("event:{E123}:start_flag");
-
         when(keyManager.isEventStartFlagKey(anyString())).thenReturn(true);
         when(keyManager.extractEventId(anyString())).thenReturn("E123");
-        when(eventService.acquireEventLock(eq("E123"), any())).thenReturn(true); //락획득
-        when(eventService.isAlreadyOpened("E123")).thenReturn(true); // 이미 OPEN 상태
+        when(eventService.acquireEventLock(eq("E123"), any())).thenReturn(true);
+        when(eventService.isAlreadyOpened("E123")).thenReturn(true);
 
+        // when
         listener.onMessage(message, null);
 
+        // then
         verify(eventService).releaseEventLock("E123"); // 락은 항상 해제되어야 함
         verify(eventService, never()).markEventAsOpened(any());
     }
@@ -87,40 +92,40 @@ public class RedisKeyExpirationListenerTest {
     @Test
     @DisplayName("정상적인 TTL 만료 이벤트 시 mark → publish → remove 순서 호출")
     void testSuccessfulEventHandling() {
+        // given
         Message message = message("event:{E123}:start_flag");
-
         when(keyManager.isEventStartFlagKey(anyString())).thenReturn(true);
         when(keyManager.extractEventId(anyString())).thenReturn("E123");
         when(eventService.acquireEventLock(eq("E123"), any())).thenReturn(true);
         when(eventService.isAlreadyOpened("E123")).thenReturn(false);
 
+        // when
         listener.onMessage(message, null);
 
-        //호출 순서 검증
+        // then
         InOrder inOrder = inOrder(eventService, eventKafkaPublisher);
         inOrder.verify(eventService).markEventAsOpened("E123");
         inOrder.verify(eventService).removeFromSchedule("E123");
 
-        //락 해제 보장
         verify(eventService).releaseEventLock("E123");
     }
 
     @Test
     @DisplayName("이벤트 처리 중 예외 발생 시에도 락은 해제되어야 한다")
     void testLockAlwaysReleasedOnException() {
+        // given
         Message message = message("event:{E123}:start_flag");
-
         when(keyManager.isEventStartFlagKey(anyString())).thenReturn(true);
         when(keyManager.extractEventId(anyString())).thenReturn("E123");
         when(eventService.acquireEventLock(eq("E123"), any())).thenReturn(true);
         when(eventService.isAlreadyOpened("E123")).thenReturn(false);
-
         doThrow(new RuntimeException("Redis error"))
                 .when(eventService).markEventAsOpened("E123");
 
+        // when
         listener.onMessage(message, null);
 
-        //락 해제 보장
+        // then
         verify(eventService).releaseEventLock("E123");
     }
 }
