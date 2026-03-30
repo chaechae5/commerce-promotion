@@ -10,9 +10,10 @@ import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@DisplayName("주문 이벤트 처리 핸들러 서비스 단위 테스트")
 class OrderPlacedHandlerServiceTest {
 
     private OrderPlacedEvent event;
@@ -28,68 +29,79 @@ class OrderPlacedHandlerServiceTest {
                         .decreasedStock(2)
                         .build()))
                 .build();
-
     }
 
     @Test
     @DisplayName("정상 처리")
     void successImmediately() {
+        // given
         SuccessStubProcessor processor = new SuccessStubProcessor();
         OrderPlacedHandlerService handler = new OrderPlacedHandlerService(processor);
 
+        // when
         handler.processProductStockChange(event);
 
-        assertEquals(1, processor.callCount);
+        // then
+        assertThat(processor.callCount).isEqualTo(1);
     }
 
     @Test
     @DisplayName("비즈니스 예외 - 재시도 없이 바로 실패")
     void businessException_noRetry() {
+        // given
         FailStubProcessor processor = new FailStubProcessor(
                 new CommonCustomException(CommonErrorCode.COUPON_ALREADY_ISSUED));
         OrderPlacedHandlerService handler = new OrderPlacedHandlerService(processor);
 
-        assertThrows(CommonCustomException.class,
-                () -> handler.processProductStockChange(event));
+        // when & then
+        assertThatThrownBy(() -> handler.processProductStockChange(event))
+                .isInstanceOf(CommonCustomException.class);
 
-        assertEquals(1, processor.callCount); // 재시도 안 됨
+        assertThat(processor.callCount).isEqualTo(1); // 재시도 안 됨
     }
 
     @Test
     @DisplayName("DataIntegrityViolationException - 재시도 없이 바로 실패, 공통 예외로 변환")
     void dataIntegrityViolation_transformed() {
+        // given
         FailStubProcessor processor = new FailStubProcessor(new DataIntegrityViolationException("DB fail"));
         OrderPlacedHandlerService handler = new OrderPlacedHandlerService(processor);
 
-        CommonCustomException ex = assertThrows(CommonCustomException.class,
-                () -> handler.processProductStockChange(event));
+        // when & then
+        assertThatThrownBy(() -> handler.processProductStockChange(event))
+                .isInstanceOf(CommonCustomException.class)
+                .satisfies(e -> assertThat(((CommonCustomException) e).getErrorCode())
+                        .isEqualTo(CommonErrorCode.PRODUCT_STOCK_AUDIT_SAVE_FAILED));
 
-        assertEquals(CommonErrorCode.PRODUCT_STOCK_AUDIT_SAVE_FAILED, ex.getErrorCode());
-        assertEquals(1, processor.callCount);
+        assertThat(processor.callCount).isEqualTo(1);
     }
 
     @Test
     @DisplayName("낙관적 락 예외 - 최대 3회 재시도 후 실패")
     void optimisticLocking_retry3Times() {
+        // given
         FailStubProcessor processor = new FailStubProcessor(new OptimisticLockingFailureException("fail"));
         OrderPlacedHandlerService handler = new OrderPlacedHandlerService(processor);
 
-        assertThrows(OptimisticLockingFailureException.class,
-                () -> handler.processProductStockChange(event));
+        // when & then
+        assertThatThrownBy(() -> handler.processProductStockChange(event))
+                .isInstanceOf(OptimisticLockingFailureException.class);
 
-        assertEquals(3, processor.callCount); // 최대 3회 재시도
+        assertThat(processor.callCount).isEqualTo(3); // 최대 3회 재시도
     }
 
     @Test
     @DisplayName("런타임 예외 - 최대 3회 재시도 후 실패")
     void runtimeException_retry3Times() {
+        // given
         FailStubProcessor processor = new FailStubProcessor(new RuntimeException("system fail"));
         OrderPlacedHandlerService handler = new OrderPlacedHandlerService(processor);
 
-        assertThrows(RuntimeException.class,
-                () -> handler.processProductStockChange(event));
+        // when & then
+        assertThatThrownBy(() -> handler.processProductStockChange(event))
+                .isInstanceOf(RuntimeException.class);
 
-        assertEquals(3, processor.callCount); // 최대 3회 재시도
+        assertThat(processor.callCount).isEqualTo(3); // 최대 3회 재시도
     }
 
 

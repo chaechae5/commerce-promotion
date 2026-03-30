@@ -4,7 +4,7 @@ spring:
       on-profile: local
 
   datasource:
-    url: jdbc:h2:mem:promo_local_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:promo_local_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL;NON_KEYWORDS=VALUE
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -64,6 +64,7 @@ app:
 naverpay:
   base-url: https://dev-pub.apis.naver.com
   partner-id: naverpay-partner
-  client-id: ${NAVERPAY_CLIENT_ID}
-  client-secret: ${NAVERPAY_CLIENT_SECRET}
+  client-id: ${NAVERPAY_CLIENT_ID:local-client-id}
+  client-secret: ${NAVERPAY_CLIENT_SECRET:local-client-secret}
+  chain-id: ${NAVERPAY_CHAIN_ID:local-chain-id}
 
